@@ -10,6 +10,12 @@ from app.modules.invoicing.models import (
     InvoiceItem,
     InvoiceSequence,
 )
+from app.modules.emi.models import (
+    EmiInstallment,
+    EmiInstallmentStatus,
+    EmiPlan,
+    EmiPlanStatus,
+)
 from app.modules.payments.models import Payment, PaymentMethod, PaymentStatus
 from app.modules.sales.models import (
     Purchase,
@@ -45,5 +51,9 @@ __all__ = [
     "Payment",
     "PaymentMethod",
     "PaymentStatus",
+    "EmiPlan",
+    "EmiInstallment",
+    "EmiPlanStatus",
+    "EmiInstallmentStatus",
     "Expense",
 ]

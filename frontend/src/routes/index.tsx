@@ -48,6 +48,8 @@ const ReturnsPage = React.lazy(() => import("./staff/ReturnsPage"))
 const InvoicesPage = React.lazy(() => import("./staff/InvoicesPage"))
 const InvoiceDetailPage = React.lazy(() => import("./staff/InvoiceDetailPage"))
 const PaymentsPage = React.lazy(() => import("./staff/PaymentsPage"))
+const EmiPage = React.lazy(() => import("./staff/EmiPage"))
+const EmiDetailPage = React.lazy(() => import("./staff/EmiDetailPage"))
 
 // Fallback spinner / skeleton
 const PageLoadingFallback = () => (
@@ -164,15 +166,19 @@ export const router = createBrowserRouter([
   {
     path: "/staff/emi",
     element: (
-      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff", "Accountant"]}>
         <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="EMI"
-              description="Installment financing and repayment tracking"
-              icon={RotateCcw}
-            />
-          )}
+          {withSuspense(<EmiPage />)}
+        </StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/emi/:id",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff", "Accountant"]}>
+        <StaffShell>
+          {withSuspense(<EmiDetailPage />)}
         </StaffShell>
       </StaffRouteGuard>
     ),

@@ -57,7 +57,22 @@ class Payment(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     reference_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    emi_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("emi_plans.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    emi_installment_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("emi_installments.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Relationships
     invoice = relationship("app.modules.invoicing.models.Invoice", back_populates="payments")
     customer = relationship("app.modules.auth.models.Customer")
     staff = relationship("app.modules.auth.models.StaffUser")
+    emi_plan = relationship("app.modules.emi.models.EmiPlan", back_populates="payments")
+    emi_installment = relationship("app.modules.emi.models.EmiInstallment", back_populates="payments")
