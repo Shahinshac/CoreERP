@@ -7,7 +7,6 @@ import {
   CreditCard,
   FileText,
   HelpCircle,
-  Receipt,
   RotateCcw,
   ShieldCheck,
   ShoppingBag,
@@ -51,6 +50,7 @@ const EmiPage = React.lazy(() => import("./staff/EmiPage"))
 const EmiDetailPage = React.lazy(() => import("./staff/EmiDetailPage"))
 const StaffManagementPage = React.lazy(() => import("./staff/StaffManagementPage"))
 const SalaryRecordsPage = React.lazy(() => import("./staff/SalaryRecordsPage"))
+const ExpensesPage = React.lazy(() => import("./staff/ExpensesPage"))
 
 // Fallback spinner / skeleton
 const PageLoadingFallback = () => (
@@ -209,13 +209,7 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Accountant"]}>
         <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Expenses"
-              description="Operational business overheads and expenditures"
-              icon={Receipt}
-            />
-          )}
+          {withSuspense(<ExpensesPage />)}
         </StaffShell>
       </StaffRouteGuard>
     ),

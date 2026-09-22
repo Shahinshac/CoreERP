@@ -327,6 +327,8 @@ def mark_salary_as_paid(
         description=f"Salary payout for {staff_display} - Period: {record.period} (Record: {record.id})",
         date=date.today(),
         created_by=payer.id,
+        source="system_salary",
+        reference_id=str(record.id),
     )
     db.add(expense)
     db.flush()

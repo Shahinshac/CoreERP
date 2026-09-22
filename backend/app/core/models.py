@@ -1,7 +1,7 @@
 # Central registry of all ORM models for metadata discovery
 from app.modules.auth.models import Customer, StaffRole, StaffUser
 from app.modules.catalog.models import Brand, Category, Product
-from app.modules.finance.models import Expense
+from app.modules.finance.models import Expense, ExpenseCategory, ExpenseSource
 from app.modules.hr.models import SalaryRecord, SalaryRecordStatus
 from app.modules.inventory.models import MovementType, StockMovement
 from app.modules.invoicing.models import (
@@ -57,6 +57,8 @@ __all__ = [
     "EmiPlanStatus",
     "EmiInstallmentStatus",
     "Expense",
+    "ExpenseCategory",
+    "ExpenseSource",
     "SalaryRecord",
     "SalaryRecordStatus",
 ]

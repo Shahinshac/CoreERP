@@ -72,6 +72,7 @@ def create_app() -> FastAPI:
     from app.modules.payments.routes import router as payments_router
     from app.modules.emi.routes import emi_router
     from app.modules.hr.routes import hr_router
+    from app.modules.finance.routes import finance_router
     from app.modules.sales.routes import pos_router
 
     app.include_router(staff_auth_router)
@@ -84,6 +85,7 @@ def create_app() -> FastAPI:
     app.include_router(payments_router)
     app.include_router(emi_router, prefix="/api/emi")
     app.include_router(hr_router, prefix="/api/hr")
+    app.include_router(finance_router, prefix="/api/finance")
 
     return app
 
