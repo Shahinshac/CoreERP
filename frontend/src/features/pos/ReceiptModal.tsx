@@ -1,5 +1,7 @@
-import React from "react"
-import { CheckCircle2, Printer, X } from "lucide-react"
+import React, { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { CheckCircle2, Download, ExternalLink, FileText, Printer, X } from "lucide-react"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogDescription,
@@ -8,7 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Sale } from "./api"
+import { Invoice, invoicingApi } from "@/features/invoicing/api"
 
 interface ReceiptModalProps {
   open: boolean
@@ -21,14 +25,64 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onOpenChange,
   sale,
 }) => {
+  const navigate = useNavigate()
+  const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [showTaxInvoiceForm, setShowTaxInvoiceForm] = useState(false)
+  const [buyerName, setBuyerName] = useState("")
+  const [buyerGstin, setBuyerGstin] = useState("")
+  const [buyerState, setBuyerState] = useState("")
+
   if (!sale) return null
 
   const handlePrint = () => {
     window.print()
   }
 
+  const handleGenerateInvoice = async () => {
+    setIsGenerating(true)
+    try {
+      const inv = await invoicingApi.generateFromSale(sale.id, {
+        buyer_name: buyerName.trim() || undefined,
+        buyer_gstin: buyerGstin.trim() || undefined,
+        buyer_state: buyerState.trim() || undefined,
+      })
+      setGeneratedInvoice(inv)
+      toast.success(`GST Tax Invoice ${inv.invoice_number} generated!`)
+    } catch {
+      // Handled by API error toast
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleViewInvoice = () => {
+    if (!generatedInvoice) return
+    onOpenChange(false)
+    navigate(`/staff/invoices/${generatedInvoice.id}`)
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!generatedInvoice) return
+    try {
+      await invoicingApi.downloadPdf(generatedInvoice.id, generatedInvoice.invoice_number)
+      toast.success("Tax Invoice PDF downloaded successfully!")
+    } catch {
+      toast.error("Failed to download PDF.")
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!val) {
+          setGeneratedInvoice(null)
+          setShowTaxInvoiceForm(false)
+        }
+        onOpenChange(val)
+      }}
+    >
       <div className="space-y-4 max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-2 text-emerald-600 justify-center">
@@ -90,10 +144,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                 <span>-₹{parseFloat(sale.discount_amount).toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-slate-400 text-[10px]">
-              <span>Tax (GST placeholder):</span>
-              <span>₹{parseFloat(sale.tax_amount).toFixed(2)}</span>
-            </div>
             <div className="flex justify-between font-bold text-sm text-slate-900 pt-1 border-t border-slate-200">
               <span>Grand Total:</span>
               <span>₹{parseFloat(sale.total_amount).toFixed(2)}</span>
@@ -102,12 +152,100 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
           <div className="pt-2 text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300">
             Payment Method: <span className="uppercase font-semibold">{sale.payment_method}</span>
-            <br />
-            * Phase 6 Pre-GST Subtotal *
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2 sm:justify-between">
+        {/* Formal GST Invoice Section */}
+        {generatedInvoice ? (
+          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                <FileText className="h-4 w-4" />
+                GST Tax Invoice Generated!
+              </div>
+              <span className="font-mono text-emerald-900 font-semibold">
+                {generatedInvoice.invoice_number}
+              </span>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleViewInvoice}
+                className="flex-1 h-8 text-xs bg-white text-emerald-700 hover:bg-emerald-50"
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                View Invoice
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPdf}
+                className="flex-1 h-8 text-xs bg-white text-emerald-700 hover:bg-emerald-50"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Download PDF
+              </Button>
+            </div>
+          </div>
+        ) : showTaxInvoiceForm ? (
+          <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2.5 text-xs">
+            <div className="font-semibold text-blue-900 flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5 text-blue-600" />
+              Tax Invoice Recipient Details
+            </div>
+            <div className="space-y-1.5">
+              <Input
+                placeholder="Buyer / Business Name (defaults to customer)"
+                value={buyerName}
+                onChange={(e) => setBuyerName(e.target.value)}
+                className="h-8 text-xs bg-white"
+              />
+              <Input
+                placeholder="Buyer GSTIN (Optional, for B2B ITC)"
+                value={buyerGstin}
+                onChange={(e) => setBuyerGstin(e.target.value)}
+                className="h-8 text-xs bg-white uppercase font-mono"
+              />
+              <Input
+                placeholder="Buyer State (e.g. Maharashtra, Delhi)"
+                value={buyerState}
+                onChange={(e) => setBuyerState(e.target.value)}
+                className="h-8 text-xs bg-white"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleGenerateInvoice}
+                disabled={isGenerating}
+                className="flex-1 h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+              >
+                {isGenerating ? "Finalizing..." : "Create Sequential Invoice"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTaxInvoiceForm(false)}
+                className="h-8 text-xs"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTaxInvoiceForm(true)}
+            className="w-full h-9 border-blue-200 bg-blue-50/50 hover:bg-blue-100 text-blue-700 text-xs font-semibold gap-1.5"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Generate Statutory GST Tax Invoice
+          </Button>
+        )}
+
+        <DialogFooter className="flex gap-2 sm:justify-between pt-1">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             <X className="h-4 w-4 mr-1.5" />
             Close

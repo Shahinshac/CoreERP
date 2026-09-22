@@ -45,6 +45,8 @@ const InventoryPage = React.lazy(() => import("./staff/InventoryPage"))
 const POSPage = React.lazy(() => import("./staff/POSPage"))
 const CustomersPage = React.lazy(() => import("./staff/CustomersPage"))
 const ReturnsPage = React.lazy(() => import("./staff/ReturnsPage"))
+const InvoicesPage = React.lazy(() => import("./staff/InvoicesPage"))
+const InvoiceDetailPage = React.lazy(() => import("./staff/InvoiceDetailPage"))
 
 // Fallback spinner / skeleton
 const PageLoadingFallback = () => (
@@ -136,15 +138,15 @@ export const router = createBrowserRouter([
     path: "/staff/invoices",
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff", "Accountant"]}>
-        <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Invoices"
-              description="Customer billing and tax invoice generation"
-              icon={FileText}
-            />
-          )}
-        </StaffShell>
+        <StaffShell>{withSuspense(<InvoicesPage />)}</StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/invoices/:id",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff", "Accountant"]}>
+        <StaffShell>{withSuspense(<InvoiceDetailPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },

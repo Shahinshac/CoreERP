@@ -32,6 +32,15 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
 
+    # Seller GST & Billing Configuration (Indian GST Statutory Defaults)
+    SELLER_NAME: str = "My Retail Store Pvt Ltd"
+    SELLER_GSTIN: str = "27ABCDE1234F1Z5"
+    SELLER_STATE: str = "Maharashtra"
+    SELLER_STATE_CODE: str = "27"
+    SELLER_ADDRESS: str = "123 Commercial Hub, MG Road, Mumbai, Maharashtra 400001"
+    SELLER_PHONE: str = "+91 9876543210"
+    SELLER_EMAIL: str = "billing@myretailstore.com"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

@@ -64,6 +64,7 @@ class ProductBase(BaseModel):
     name: str
     sku: str
     barcode: str | None = None
+    hsn_code: str | None = None
     category_id: uuid.UUID
     brand_id: uuid.UUID
     unit: str = "pcs"
@@ -101,6 +102,7 @@ class ProductUpdate(BaseModel):
     name: str | None = None
     sku: str | None = None
     barcode: str | None = None
+    hsn_code: str | None = None
     category_id: uuid.UUID | None = None
     brand_id: uuid.UUID | None = None
     unit: str | None = None
@@ -144,6 +146,7 @@ class ProductResponse(BaseModel):
     name: str
     sku: str
     barcode: str | None
+    hsn_code: str | None = None
     category_id: uuid.UUID
     brand_id: uuid.UUID
     unit: str

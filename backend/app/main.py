@@ -68,6 +68,7 @@ def create_app() -> FastAPI:
     from app.modules.auth.routes import customer_auth_router, staff_auth_router
     from app.modules.catalog.routes import catalog_router
     from app.modules.inventory.routes import inventory_router
+    from app.modules.invoicing.routes import router as invoicing_router
     from app.modules.sales.routes import pos_router
 
     app.include_router(staff_auth_router)
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(catalog_router)
     app.include_router(inventory_router)
     app.include_router(pos_router)
+    app.include_router(invoicing_router)
 
     return app
 

@@ -166,3 +166,38 @@ def require_roles(*allowed_roles: StaffRole | str) -> Callable[[StaffUser], Staf
         return current_staff
 
     return role_checker
+
+
+def get_current_user_optional(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> tuple[StaffUser | None, Customer | None]:
+    """
+    Optional user dependency returning (staff_user, customer_user).
+    Supports either staff or customer tokens.
+    """
+    if not credentials or not credentials.credentials:
+        return None, None
+
+    token = credentials.credentials
+    # Try decoding as staff
+    try:
+        payload = decode_token(token, expected_audience="staff")
+        user_id = uuid.UUID(payload.get("sub"))
+        staff = db.query(StaffUser).filter(StaffUser.id == user_id, StaffUser.is_active.is_(True)).first()
+        if staff:
+            return staff, None
+    except Exception:
+        pass
+
+    # Try decoding as customer
+    try:
+        payload = decode_token(token, expected_audience="customer")
+        user_id = uuid.UUID(payload.get("sub"))
+        customer = db.query(Customer).filter(Customer.id == user_id, Customer.is_active.is_(True)).first()
+        if customer:
+            return None, customer
+    except Exception:
+        pass
+
+    return None, None

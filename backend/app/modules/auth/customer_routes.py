@@ -25,6 +25,8 @@ class CustomerCreateRequest(BaseModel):
     email: EmailType
     phone: str | None = None
     address: str | None = None
+    gstin: str | None = None
+    state: str | None = None
     password: str | None = None
 
 
@@ -32,6 +34,8 @@ class CustomerUpdateRequest(BaseModel):
     name: str | None = None
     phone: str | None = None
     address: str | None = None
+    gstin: str | None = None
+    state: str | None = None
     is_active: bool | None = None
 
 
@@ -52,6 +56,8 @@ class CustomerDetailResponse(BaseModel):
     email: str
     phone: str | None
     address: str | None
+    gstin: str | None = None
+    state: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -66,6 +72,8 @@ class CustomerListItem(BaseModel):
     email: str
     phone: str | None
     address: str | None
+    gstin: str | None = None
+    state: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -157,6 +165,8 @@ def create_customer(
         name=payload.name,
         phone=payload.phone,
         address=payload.address,
+        gstin=payload.gstin,
+        state=payload.state,
         password_hash=hash_password(raw_password),
         is_active=True,
     )
@@ -170,6 +180,8 @@ def create_customer(
         email=customer.email,
         phone=customer.phone,
         address=customer.address,
+        gstin=customer.gstin,
+        state=customer.state,
         is_active=customer.is_active,
         created_at=customer.created_at,
         updated_at=customer.updated_at,
@@ -194,6 +206,10 @@ def update_customer(
         customer.phone = payload.phone
     if payload.address is not None:
         customer.address = payload.address
+    if payload.gstin is not None:
+        customer.gstin = payload.gstin
+    if payload.state is not None:
+        customer.state = payload.state
     if payload.is_active is not None:
         customer.is_active = payload.is_active
 

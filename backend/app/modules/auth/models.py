@@ -60,3 +60,11 @@ class Customer(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         Text,
         nullable=True,
     )
+    gstin: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+    )
+    state: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )

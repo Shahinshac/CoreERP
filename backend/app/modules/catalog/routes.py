@@ -272,6 +272,7 @@ def create_product(
         name=payload.name,
         sku=payload.sku,
         barcode=payload.barcode,
+        hsn_code=payload.hsn_code,
         category_id=payload.category_id,
         brand_id=payload.brand_id,
         unit=payload.unit,
@@ -326,7 +327,7 @@ def update_product(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid brand_id.")
         product.brand_id = payload.brand_id
 
-    for field in ["name", "unit", "purchase_price", "selling_price", "gst_rate", "min_stock", "is_active"]:
+    for field in ["name", "hsn_code", "unit", "purchase_price", "selling_price", "gst_rate", "min_stock", "is_active"]:
         val = getattr(payload, field)
         if val is not None:
             setattr(product, field, val)
