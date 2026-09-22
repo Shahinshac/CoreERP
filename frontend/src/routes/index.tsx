@@ -1,21 +1,12 @@
+import React, { Suspense } from "react"
 import { createBrowserRouter } from "react-router-dom"
-import { HomePage } from "./Home"
-import { StaffLoginPage } from "./auth/StaffLogin"
-import { CustomerLoginPage } from "./auth/CustomerLogin"
-import { CustomerRegisterPage } from "./auth/CustomerRegister"
-import { StaffDashboard } from "./StaffDashboard"
-import { ModulePlaceholder } from "./ModulePlaceholder"
-import { CustomerDashboard } from "./CustomerDashboard"
-import { CustomerModulePlaceholder } from "./CustomerModulePlaceholder"
 import { StaffRouteGuard, CustomerRouteGuard } from "@/features/auth/RouteGuards"
 import { StaffShell } from "@/components/layout/StaffShell"
 import { CustomerShell } from "@/components/layout/CustomerShell"
 import {
-  Boxes,
   CreditCard,
   FileText,
   HelpCircle,
-  Package,
   Receipt,
   RotateCcw,
   ShieldCheck,
@@ -25,23 +16,69 @@ import {
   Users,
 } from "lucide-react"
 
+// Lazy loaded page chunks for modular code splitting
+const HomePage = React.lazy(() => import("./Home").then((m) => ({ default: m.HomePage })))
+const StaffLoginPage = React.lazy(() =>
+  import("./auth/StaffLogin").then((m) => ({ default: m.StaffLoginPage }))
+)
+const CustomerLoginPage = React.lazy(() =>
+  import("./auth/CustomerLogin").then((m) => ({ default: m.CustomerLoginPage }))
+)
+const CustomerRegisterPage = React.lazy(() =>
+  import("./auth/CustomerRegister").then((m) => ({ default: m.CustomerRegisterPage }))
+)
+const StaffDashboard = React.lazy(() =>
+  import("./StaffDashboard").then((m) => ({ default: m.StaffDashboard }))
+)
+const CustomerDashboard = React.lazy(() =>
+  import("./CustomerDashboard").then((m) => ({ default: m.CustomerDashboard }))
+)
+const ModulePlaceholder = React.lazy(() =>
+  import("./ModulePlaceholder").then((m) => ({ default: m.ModulePlaceholder }))
+)
+const CustomerModulePlaceholder = React.lazy(() =>
+  import("./CustomerModulePlaceholder").then((m) => ({ default: m.CustomerModulePlaceholder }))
+)
+
+// Real Functional Modules
+const ProductsPage = React.lazy(() => import("./staff/ProductsPage"))
+const InventoryPage = React.lazy(() => import("./staff/InventoryPage"))
+
+// Fallback spinner / skeleton
+const PageLoadingFallback = () => (
+  <div className="p-8 space-y-4 max-w-6xl mx-auto animate-pulse">
+    <div className="h-8 bg-slate-200 rounded w-1/4"></div>
+    <div className="h-4 bg-slate-100 rounded w-1/2"></div>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+      <div className="h-24 bg-slate-100 rounded-xl"></div>
+      <div className="h-24 bg-slate-100 rounded-xl"></div>
+      <div className="h-24 bg-slate-100 rounded-xl"></div>
+    </div>
+    <div className="h-64 bg-slate-100 rounded-xl mt-6"></div>
+  </div>
+)
+
+const withSuspense = (component: React.ReactNode) => (
+  <Suspense fallback={<PageLoadingFallback />}>{component}</Suspense>
+)
+
 export const router = createBrowserRouter([
-  // Public
+  // Public Routes
   {
     path: "/",
-    element: <HomePage />,
+    element: withSuspense(<HomePage />),
   },
   {
     path: "/staff/login",
-    element: <StaffLoginPage />,
+    element: withSuspense(<StaffLoginPage />),
   },
   {
     path: "/customer/login",
-    element: <CustomerLoginPage />,
+    element: withSuspense(<CustomerLoginPage />),
   },
   {
     path: "/customer/register",
-    element: <CustomerRegisterPage />,
+    element: withSuspense(<CustomerRegisterPage />),
   },
 
   // Staff Portal Routes
@@ -49,9 +86,7 @@ export const router = createBrowserRouter([
     path: "/staff",
     element: (
       <StaffRouteGuard>
-        <StaffShell>
-          <StaffDashboard />
-        </StaffShell>
+        <StaffShell>{withSuspense(<StaffDashboard />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },
@@ -59,9 +94,7 @@ export const router = createBrowserRouter([
     path: "/staff/products",
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
-        <StaffShell>
-          <ModulePlaceholder name="Products" description="Manage product catalog, SKUs, and pricing" icon={Package} />
-        </StaffShell>
+        <StaffShell>{withSuspense(<ProductsPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },
@@ -69,9 +102,7 @@ export const router = createBrowserRouter([
     path: "/staff/inventory",
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
-        <StaffShell>
-          <ModulePlaceholder name="Inventory" description="Stock ledger and stock movement auditing" icon={Boxes} />
-        </StaffShell>
+        <StaffShell>{withSuspense(<InventoryPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },
@@ -80,7 +111,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
         <StaffShell>
-          <ModulePlaceholder name="Sales" description="Sales orders, POS, and supplier purchases" icon={ShoppingBag} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Sales"
+              description="Sales orders, POS, and supplier purchases"
+              icon={ShoppingBag}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -90,7 +127,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
         <StaffShell>
-          <ModulePlaceholder name="Customers" description="Customer directory and relationship profiles" icon={Users} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Customers"
+              description="Customer directory and relationship profiles"
+              icon={Users}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -100,7 +143,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff", "Accountant"]}>
         <StaffShell>
-          <ModulePlaceholder name="Invoices" description="Customer billing and tax invoice generation" icon={FileText} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Invoices"
+              description="Customer billing and tax invoice generation"
+              icon={FileText}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -110,7 +159,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff", "Accountant"]}>
         <StaffShell>
-          <ModulePlaceholder name="Payments" description="Payment transactions and settlement records" icon={CreditCard} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Payments"
+              description="Payment transactions and settlement records"
+              icon={CreditCard}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -120,7 +175,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
         <StaffShell>
-          <ModulePlaceholder name="EMI" description="Installment financing and repayment tracking" icon={RotateCcw} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="EMI"
+              description="Installment financing and repayment tracking"
+              icon={RotateCcw}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -130,7 +191,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin"]}>
         <StaffShell>
-          <ModulePlaceholder name="Staff" description="Staff user directory and RBAC permissions" icon={UserCheck} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Staff"
+              description="Staff user directory and RBAC permissions"
+              icon={UserCheck}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -140,7 +207,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Accountant"]}>
         <StaffShell>
-          <ModulePlaceholder name="Expenses" description="Operational business overheads and expenditures" icon={Receipt} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Expenses"
+              description="Operational business overheads and expenditures"
+              icon={Receipt}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -150,7 +223,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Accountant"]}>
         <StaffShell>
-          <ModulePlaceholder name="Reports" description="Financial analytics and operational auditing" icon={TrendingUp} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Reports"
+              description="Financial analytics and operational auditing"
+              icon={TrendingUp}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -160,7 +239,13 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard>
         <StaffShell>
-          <ModulePlaceholder name="Support" description="Customer issue tickets and escalations" icon={HelpCircle} />
+          {withSuspense(
+            <ModulePlaceholder
+              name="Support"
+              description="Customer issue tickets and escalations"
+              icon={HelpCircle}
+            />
+          )}
         </StaffShell>
       </StaffRouteGuard>
     ),
@@ -171,9 +256,7 @@ export const router = createBrowserRouter([
     path: "/portal",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          <CustomerDashboard />
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerDashboard />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -182,7 +265,13 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="Purchases" description="View orders and purchase history" icon={ShoppingBag} />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="Purchases"
+              description="View orders and purchase history"
+              icon={ShoppingBag}
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),
@@ -192,7 +281,13 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="Invoices" description="Download VAT/GST invoices and receipts" icon={FileText} />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="Invoices"
+              description="Download VAT/GST invoices and receipts"
+              icon={FileText}
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),
@@ -202,7 +297,13 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="Payments" description="Payment history and receipts" icon={CreditCard} />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="Payments"
+              description="Payment history and receipts"
+              icon={CreditCard}
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),
@@ -212,7 +313,13 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="EMI" description="EMI schedule and upcoming installments" icon={RotateCcw} />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="EMI"
+              description="EMI schedule and upcoming installments"
+              icon={RotateCcw}
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),
@@ -222,7 +329,13 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="Warranty" description="Product warranty registration and coverage" icon={ShieldCheck} />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="Warranty"
+              description="Product warranty registration and coverage"
+              icon={ShieldCheck}
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),
@@ -232,7 +345,13 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="Support" description="Customer support requests and inquiries" icon={HelpCircle} />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="Support"
+              description="Customer support requests and inquiries"
+              icon={HelpCircle}
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),
@@ -242,7 +361,12 @@ export const router = createBrowserRouter([
     element: (
       <CustomerRouteGuard>
         <CustomerShell>
-          <CustomerModulePlaceholder name="Profile" description="Account preferences and contact details" />
+          {withSuspense(
+            <CustomerModulePlaceholder
+              name="Profile"
+              description="Account preferences and contact details"
+            />
+          )}
         </CustomerShell>
       </CustomerRouteGuard>
     ),

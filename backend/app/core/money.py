@@ -73,3 +73,35 @@ def quantize_quantity(
     """
     dec = parse_decimal(quantity, allow_negative=allow_negative, field_name=field_name)
     return dec.quantize(QUANTITY_EXPONENT, rounding=ROUND_HALF_UP)
+
+
+def validate_money_decimal(
+    amount: Any,
+    *,
+    allow_negative: bool = False,
+    field_name: str = "Money amount",
+) -> Decimal:
+    """
+    Strictly validates a money Decimal:
+    Rejects floats, NaN, infinity, negatives (by default), and values with >2 decimal places.
+    """
+    dec = parse_decimal(amount, allow_negative=allow_negative, field_name=field_name)
+    if dec.as_tuple().exponent < -2:
+        raise ValueError(f"{field_name} must not have more than 2 decimal places. Got: {dec}")
+    return dec
+
+
+def validate_quantity_decimal(
+    quantity: Any,
+    *,
+    allow_negative: bool = False,
+    field_name: str = "Quantity",
+) -> Decimal:
+    """
+    Strictly validates a quantity Decimal:
+    Rejects floats, NaN, infinity, negatives (by default), and values with >3 decimal places.
+    """
+    dec = parse_decimal(quantity, allow_negative=allow_negative, field_name=field_name)
+    if dec.as_tuple().exponent < -3:
+        raise ValueError(f"{field_name} must not have more than 3 decimal places. Got: {dec}")
+    return dec

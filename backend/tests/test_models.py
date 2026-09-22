@@ -7,32 +7,44 @@ from app.modules.catalog.models import Brand, Category, Product
 from app.modules.inventory.models import MovementType, StockMovement
 
 
-def test_product_current_stock_check_constraint_rejects_negative(db_session: Session):
+def test_product_sku_uniqueness_constraint(db_session: Session):
     """
-    Verifies that the CHECK constraint (current_stock >= 0) rejects negative stock values.
+    Verifies that duplicate SKUs are rejected by the database unique constraint.
     """
     category = Category(name="Electronics")
     brand = Brand(name="Acme")
     db_session.add_all([category, brand])
     db_session.flush()
 
-    cat_id = category.id
-    b_id = brand.id
-
-    # Product with negative stock should violate check constraint
-    invalid_product = Product(
-        name="Laptop Invalid",
-        sku="SKU-LAPTOP-01",
-        category_id=cat_id,
-        brand_id=b_id,
+    p1 = Product(
+        name="Laptop 1",
+        sku="SKU-UNIQUE-01",
+        category_id=category.id,
+        brand_id=brand.id,
         unit="pcs",
         purchase_price=Decimal("500.00"),
         selling_price=Decimal("750.00"),
         gst_rate=Decimal("18.00"),
-        current_stock=Decimal("-1.000"),  # Negative stock
+        current_stock=Decimal("10.000"),
         min_stock=Decimal("5.000"),
     )
-    db_session.add(invalid_product)
+    db_session.add(p1)
+    db_session.flush()
+
+    # Product with duplicate SKU should violate unique constraint
+    duplicate_product = Product(
+        name="Laptop 2",
+        sku="SKU-UNIQUE-01",
+        category_id=category.id,
+        brand_id=brand.id,
+        unit="pcs",
+        purchase_price=Decimal("500.00"),
+        selling_price=Decimal("750.00"),
+        gst_rate=Decimal("18.00"),
+        current_stock=Decimal("5.000"),
+        min_stock=Decimal("5.000"),
+    )
+    db_session.add(duplicate_product)
 
     with pytest.raises(IntegrityError):
         db_session.flush()

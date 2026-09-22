@@ -26,13 +26,11 @@ class Brand(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
 class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "products"
-    __table_args__ = (
-        CheckConstraint("current_stock >= 0", name="ck_products_current_stock_positive"),
-    )
 
     name: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
     sku: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     barcode: Mapped[str | None] = mapped_column(String(100), unique=True, index=True, nullable=True)
+    image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     category_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),

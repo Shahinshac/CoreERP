@@ -36,6 +36,35 @@ staff_auth_router = APIRouter(prefix="/api/staff/auth", tags=["Staff Auth"])
 customer_auth_router = APIRouter(prefix="/api/customers/auth", tags=["Customer Auth"])
 
 
+REFRESH_COOKIE_NAME_STAFF = "staff_refresh_token"
+REFRESH_COOKIE_NAME_CUSTOMER = "customer_refresh_token"
+COOKIE_PATH = "/api"
+COOKIE_MAX_AGE = 7 * 24 * 3600
+COOKIE_SECURE = True
+COOKIE_SAMESITE = "none"
+
+
+def set_refresh_cookie(response: Response, key: str, token: str) -> None:
+    response.set_cookie(
+        key=key,
+        value=token,
+        httponly=True,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path=COOKIE_PATH,
+        max_age=COOKIE_MAX_AGE,
+    )
+
+
+def clear_refresh_cookie(response: Response, key: str) -> None:
+    response.delete_cookie(
+        key=key,
+        path=COOKIE_PATH,
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+    )
+
+
 # ==========================================
 # STAFF AUTHENTICATION ROUTES
 # ==========================================
@@ -63,14 +92,7 @@ def staff_login(
     access_token = create_access_token(subject=str(staff.id), audience="staff", role=role_val)
     refresh_token = create_refresh_token(subject=str(staff.id), audience="staff")
 
-    response.set_cookie(
-        key="staff_refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=False,  # Can be configured via settings in prod
-        samesite="lax",
-        max_age=7 * 24 * 3600,
-    )
+    set_refresh_cookie(response, REFRESH_COOKIE_NAME_STAFF, refresh_token)
 
     return StaffTokenResponse(
         access_token=access_token,
@@ -112,13 +134,7 @@ def staff_refresh(
     new_access_token = create_access_token(subject=str(staff.id), audience="staff", role=role_val)
     new_refresh_token = create_refresh_token(subject=str(staff.id), audience="staff")
 
-    response.set_cookie(
-        key="staff_refresh_token",
-        value=new_refresh_token,
-        httponly=True,
-        samesite="lax",
-        max_age=7 * 24 * 3600,
-    )
+    set_refresh_cookie(response, REFRESH_COOKIE_NAME_STAFF, new_refresh_token)
 
     return StaffTokenResponse(
         access_token=new_access_token,
@@ -128,7 +144,7 @@ def staff_refresh(
 
 @staff_auth_router.post("/logout", response_model=MessageResponse)
 def staff_logout(response: Response):
-    response.delete_cookie(key="staff_refresh_token")
+    clear_refresh_cookie(response, REFRESH_COOKIE_NAME_STAFF)
     return MessageResponse(message="Staff logged out successfully.")
 
 
@@ -198,13 +214,7 @@ def customer_register(
     access_token = create_access_token(subject=str(customer.id), audience="customer")
     refresh_token = create_refresh_token(subject=str(customer.id), audience="customer")
 
-    response.set_cookie(
-        key="customer_refresh_token",
-        value=refresh_token,
-        httponly=True,
-        samesite="lax",
-        max_age=7 * 24 * 3600,
-    )
+    set_refresh_cookie(response, REFRESH_COOKIE_NAME_CUSTOMER, refresh_token)
 
     return CustomerTokenResponse(
         access_token=access_token,
@@ -234,13 +244,7 @@ def customer_login(
     access_token = create_access_token(subject=str(customer.id), audience="customer")
     refresh_token = create_refresh_token(subject=str(customer.id), audience="customer")
 
-    response.set_cookie(
-        key="customer_refresh_token",
-        value=refresh_token,
-        httponly=True,
-        samesite="lax",
-        max_age=7 * 24 * 3600,
-    )
+    set_refresh_cookie(response, REFRESH_COOKIE_NAME_CUSTOMER, refresh_token)
 
     return CustomerTokenResponse(
         access_token=access_token,
@@ -281,13 +285,7 @@ def customer_refresh(
     new_access_token = create_access_token(subject=str(customer.id), audience="customer")
     new_refresh_token = create_refresh_token(subject=str(customer.id), audience="customer")
 
-    response.set_cookie(
-        key="customer_refresh_token",
-        value=new_refresh_token,
-        httponly=True,
-        samesite="lax",
-        max_age=7 * 24 * 3600,
-    )
+    set_refresh_cookie(response, REFRESH_COOKIE_NAME_CUSTOMER, new_refresh_token)
 
     return CustomerTokenResponse(
         access_token=new_access_token,
@@ -297,7 +295,7 @@ def customer_refresh(
 
 @customer_auth_router.post("/logout", response_model=MessageResponse)
 def customer_logout(response: Response):
-    response.delete_cookie(key="customer_refresh_token")
+    clear_refresh_cookie(response, REFRESH_COOKIE_NAME_CUSTOMER)
     return MessageResponse(message="Customer logged out successfully.")
 
 

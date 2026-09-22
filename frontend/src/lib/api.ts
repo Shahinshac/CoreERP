@@ -82,8 +82,9 @@ async function requestWithRetry<T>(
 ): Promise<T> {
   const url = `${BASE_URL.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`
 
+  const isFormData = options.body instanceof FormData
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string>),
   }
 
@@ -126,6 +127,11 @@ async function requestWithRetry<T>(
       throw new ApiError(response.status, code, message, details)
     }
 
+    // Return empty object for 204 No Content
+    if (response.status === 204) {
+      return {} as T
+    }
+
     return response.json() as Promise<T>
   } catch (err) {
     if (err instanceof ApiError) {
@@ -144,16 +150,22 @@ export const apiClient = {
     requestWithRetry<T>(path, {
       ...options,
       method: "POST",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
     }),
   put: <T>(path: string, body?: unknown, options?: RequestInit) =>
     requestWithRetry<T>(path, {
       ...options,
       method: "PUT",
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
     }),
   delete: <T>(path: string, options?: RequestInit) =>
     requestWithRetry<T>(path, { ...options, method: "DELETE" }),
+  upload: <T>(path: string, formData: FormData, options?: RequestInit) =>
+    requestWithRetry<T>(path, {
+      ...options,
+      method: "POST",
+      body: formData,
+    }),
 }
 
 export interface PingResponse {

@@ -283,3 +283,35 @@ def test_staff_password_reset_flow(client: TestClient, db_session: Session):
         json={"email": "reset.user@erp.local", "password": "brandnewpassword456"},
     )
     assert ok_login.status_code == 200
+
+
+def test_refresh_cookie_attributes_on_set_cookie(client: TestClient, db_session: Session):
+    """
+    Asserts that the Set-Cookie header for refresh tokens includes:
+    Secure=True, SameSite=None, Path=/api, and HttpOnly.
+    """
+    staff = StaffUser(
+        email="cookie.test@erp.local",
+        password_hash=hash_password("cookiepass123"),
+        role=StaffRole.ADMIN,
+        is_active=True,
+    )
+    db_session.add(staff)
+    db_session.commit()
+
+    resp = client.post(
+        "/api/staff/auth/login",
+        json={"email": "cookie.test@erp.local", "password": "cookiepass123"},
+    )
+    assert resp.status_code == 200
+
+    set_cookie = resp.headers.get("set-cookie")
+    assert set_cookie is not None, "Set-Cookie header must be present on login"
+
+    cookie_lower = set_cookie.lower()
+    assert "staff_refresh_token=" in set_cookie
+    assert "httponly" in cookie_lower
+    assert "secure" in cookie_lower
+    assert "samesite=none" in cookie_lower
+    assert "path=/api" in cookie_lower
+

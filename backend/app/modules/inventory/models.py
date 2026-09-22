@@ -47,6 +47,10 @@ class StockMovement(Base, UUIDPrimaryKeyMixin, CreatedAtMixin):
         nullable=True,
         index=True,
     )
+    notes: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey("staff_users.id", ondelete="RESTRICT"),
