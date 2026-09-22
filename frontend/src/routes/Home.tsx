@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { Activity, ArrowRight, CheckCircle2, XCircle } from "lucide-react"
+import { Activity, ArrowRight, CheckCircle2, ShieldCheck, User, XCircle } from "lucide-react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 
@@ -22,16 +22,17 @@ export function HomePage() {
       <div className="max-w-xl w-full bg-white rounded-xl shadow-sm border border-slate-200 p-8 space-y-6">
         <div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            Phase 1
+            Phase 1–4 Operational
           </span>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 mt-2">
-            ERP Project Foundation
+            Enterprise ERP Platform
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Brand-new monorepo setup with FastAPI backend and React frontend.
+            Dual-identity architecture with Argon2 RBAC, PostgreSQL/Supabase core models, and dual application shells.
           </p>
         </div>
 
+        {/* Live Connectivity Status */}
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Activity className="h-4 w-4 text-blue-600" />
@@ -71,13 +72,44 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs text-slate-400">Routes: / & /staff</span>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/staff" className="flex items-center gap-1">
-              Go to Staff <ArrowRight className="h-3.5 w-3.5 ml-1" />
-            </Link>
-          </Button>
+        {/* Portals Access */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Dual Identity Portals
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="border rounded-lg p-4 bg-slate-50 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm text-slate-900">
+                  <ShieldCheck className="h-4 w-4 text-primary" /> Staff Operations
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Enterprise console with RBAC-filtered navigation and module management.
+                </p>
+              </div>
+              <Button asChild size="sm" className="w-full">
+                <Link to="/staff/login" className="flex items-center justify-center gap-1">
+                  Staff Login <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                </Link>
+              </Button>
+            </div>
+
+            <div className="border rounded-lg p-4 bg-slate-50 space-y-3 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 font-semibold text-sm text-slate-900">
+                  <User className="h-4 w-4 text-emerald-600" /> Client Portal
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Self-service portal for purchases, order tracking, and invoice downloads.
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className="w-full text-emerald-700 hover:text-emerald-800">
+                <Link to="/customer/login" className="flex items-center justify-center gap-1">
+                  Client Portal <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

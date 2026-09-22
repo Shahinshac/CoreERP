@@ -63,6 +63,11 @@ def create_app() -> FastAPI:
                 content={"status": "unhealthy", "database": "unreachable"},
             )
 
+    # Register routers
+    from app.modules.auth.routes import customer_auth_router, staff_auth_router
+    app.include_router(staff_auth_router)
+    app.include_router(customer_auth_router)
+
     return app
 
 
