@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   ShoppingBag,
   TrendingUp,
-  UserCheck,
 } from "lucide-react"
 
 // Lazy loaded page chunks for modular code splitting
@@ -50,6 +49,8 @@ const InvoiceDetailPage = React.lazy(() => import("./staff/InvoiceDetailPage"))
 const PaymentsPage = React.lazy(() => import("./staff/PaymentsPage"))
 const EmiPage = React.lazy(() => import("./staff/EmiPage"))
 const EmiDetailPage = React.lazy(() => import("./staff/EmiDetailPage"))
+const StaffManagementPage = React.lazy(() => import("./staff/StaffManagementPage"))
+const SalaryRecordsPage = React.lazy(() => import("./staff/SalaryRecordsPage"))
 
 // Fallback spinner / skeleton
 const PageLoadingFallback = () => (
@@ -186,15 +187,19 @@ export const router = createBrowserRouter([
   {
     path: "/staff/staff-management",
     element: (
-      <StaffRouteGuard allowedRoles={["Super Admin", "Admin"]}>
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager"]}>
         <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Staff"
-              description="Staff user directory and RBAC permissions"
-              icon={UserCheck}
-            />
-          )}
+          {withSuspense(<StaffManagementPage />)}
+        </StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/salary",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Accountant", "Staff"]}>
+        <StaffShell>
+          {withSuspense(<SalaryRecordsPage />)}
         </StaffShell>
       </StaffRouteGuard>
     ),

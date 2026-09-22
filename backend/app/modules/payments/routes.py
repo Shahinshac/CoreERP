@@ -60,6 +60,7 @@ def build_payment_response(db: Session, payment: Payment) -> PaymentResponse:
         id=payment.id,
         invoice_id=payment.invoice_id,
         customer_id=payment.customer_id,
+        emi_plan_id=payment.emi_plan_id,
         created_by=payment.created_by,
         method=payment.method,
         amount=payment.amount,
@@ -89,6 +90,7 @@ def record_payment(
     """
     Records an immutable payment in the ledger.
     - Idempotency: If idempotency_key already exists, returns the original payment record without creating a duplicate.
+    - EMI routing: If emi_plan_id is provided, delegates to shared record_emi_payment_internal for waterfall allocation.
     - Invoice reconciliation: Updates the associated invoice payment_status atomically (unpaid -> partial -> paid).
     - Overpayment protection: Blocks payments exceeding the remaining invoice balance unless allow_overpayment=True (Admin only).
     """
@@ -99,6 +101,24 @@ def record_payment(
 
     if existing_payment:
         return build_payment_response(db, existing_payment)
+
+    # If this payment is for an EMI plan, route through the consolidated EMI internal write function
+    if payload.emi_plan_id:
+        from app.modules.emi.service import record_emi_payment_internal
+
+        payment, _ = record_emi_payment_internal(
+            db=db,
+            staff=current_staff,
+            plan_id=payload.emi_plan_id,
+            amount=payload.amount,
+            idempotency_key=payload.idempotency_key,
+            method=payload.method.value,
+            reference_id=payload.reference_id,
+            notes=payload.notes,
+            target_installment_number=payload.emi_installment_number,
+            allow_overpayment=payload.allow_overpayment,
+        )
+        return build_payment_response(db, payment)
 
     customer_id = payload.customer_id
     invoice = None

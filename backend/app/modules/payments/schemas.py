@@ -11,6 +11,8 @@ from app.modules.payments.models import PaymentMethod, PaymentStatus
 class PaymentCreateRequest(BaseModel):
     invoice_id: Optional[uuid.UUID] = None
     customer_id: Optional[uuid.UUID] = None
+    emi_plan_id: Optional[uuid.UUID] = Field(None, description="Optional EMI Plan ID to record installment payment against")
+    emi_installment_number: Optional[int] = Field(None, description="Optional target installment number for waterfall allocation")
     method: PaymentMethod = Field(..., description="Payment method")
     amount: Decimal = Field(..., description="Payment amount (must be > 0)")
     idempotency_key: str = Field(..., min_length=1, max_length=100, description="Unique client-generated idempotency key")
@@ -36,6 +38,7 @@ class PaymentResponse(BaseModel):
     id: uuid.UUID
     invoice_id: Optional[uuid.UUID] = None
     customer_id: Optional[uuid.UUID] = None
+    emi_plan_id: Optional[uuid.UUID] = None
     created_by: uuid.UUID
     method: str
     amount: Decimal

@@ -1,5 +1,7 @@
 import enum
-from sqlalchemy import Enum, String, Text
+from datetime import date, datetime
+from decimal import Decimal
+from sqlalchemy import JSON, Date, DateTime, Enum, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -32,6 +34,37 @@ class StaffUser(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         default=StaffRole.STAFF,
         nullable=False,
         index=True,
+    )
+    full_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    phone: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+    employee_code: Mapped[str | None] = mapped_column(
+        String(50),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+    joining_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+    base_salary: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2),
+        default=Decimal("0.00"),
+        nullable=False,
+    )
+    deductions_config: Mapped[list | dict | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    deactivated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
     )
 
 

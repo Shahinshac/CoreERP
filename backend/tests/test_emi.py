@@ -392,3 +392,53 @@ def test_idempotent_duplicate_payment_returns_original_state(client: TestClient,
     # Crucially, total_paid must NOT have incremented to 2,000!
     assert r2.json()["total_paid"] == "1000.00"
     assert len(r2.json()["payments"]) == 1
+
+
+def test_emi_payment_via_general_payments_endpoint(client: TestClient, auth_staff_admin, db_session):
+    """
+    Assert that the third EMI payment entry point (POST /api/payments with emi_plan_id)
+    shares the exact same internal write path and properly triggers waterfall cascading allocation.
+    """
+    headers, staff = auth_staff_admin
+    customer = make_customer(db_session, "Payments Endpoint EMI Cust")
+
+    plan_res = client.post(
+        "/api/emi/plans",
+        headers=headers,
+        json={
+            "customer_id": str(customer.id),
+            "principal": "6000.00",
+            "down_payment": "0.00",
+            "number_of_installments": 3,
+        },
+    )
+    assert plan_res.status_code == 201
+    plan_id = plan_res.json()["id"]
+
+    # Record 2000 payment via POST /api/payments with emi_plan_id
+    idemp_key = f"idemp_pay_emi_{uuid.uuid4().hex}"
+    pay_res = client.post(
+        "/api/payments",
+        headers=headers,
+        json={
+            "emi_plan_id": plan_id,
+            "method": "emi",
+            "amount": "2000.00",
+            "idempotency_key": idemp_key,
+            "notes": "Payment through central payments endpoint",
+        },
+    )
+    assert pay_res.status_code == 201
+    pay_data = pay_res.json()
+    assert pay_data["emi_plan_id"] == plan_id
+    assert pay_data["amount"] == "2000.00"
+
+    # Verify plan state reflects the payment on installment 1
+    fetch_plan = client.get(f"/api/emi/plans/{plan_id}", headers=headers)
+    assert fetch_plan.status_code == 200
+    plan_data = fetch_plan.json()
+    assert plan_data["total_paid"] == "2000.00"
+    assert plan_data["remaining_balance"] == "4000.00"
+    assert plan_data["installments"][0]["status"] == "paid"
+    assert plan_data["installments"][1]["status"] == "pending"
+

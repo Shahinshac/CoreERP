@@ -400,154 +400,22 @@ def pay_emi_plan(
     db: Session = Depends(get_db),
     staff: StaffUser = Depends(get_current_staff),
 ):
-    # 1. Check idempotency: if duplicate key exists, return current state idempotently
-    idemp_stmt = select(Payment).where(Payment.idempotency_key == payload.idempotency_key)
-    idemp_res = db.execute(idemp_stmt)
-    existing_payment = idemp_res.scalar_one_or_none()
-    if existing_payment:
-        # Return existing plan state without duplicating payment
-        return get_emi_plan(id=id, db=db, staff=staff)
+    from app.modules.emi.service import record_emi_payment_internal
 
-    # 2. Fetch plan with installments and invoice
-    stmt = (
-        select(EmiPlan)
-        .options(
-            selectinload(EmiPlan.customer),
-            selectinload(EmiPlan.installments),
-            selectinload(EmiPlan.payments),
-        )
-        .where(EmiPlan.id == id)
-    )
-    res = db.execute(stmt)
-    plan = res.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="EMI plan not found")
-
-    if plan.status == EmiPlanStatus.COMPLETED.value:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This EMI plan has already been completed in full",
-        )
-
-    # 3. Calculate remaining balance of the entire plan
-    current_paid = sum((inst.amount_paid for inst in plan.installments), Decimal("0.00"))
-    remaining_plan_balance = quantize_money(plan.total_financed - current_paid)
-
-    # Overpayment protection
-    if payload.amount > remaining_plan_balance and not payload.allow_overpayment:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Payment of ₹{payload.amount} exceeds remaining plan balance of ₹{remaining_plan_balance}. "
-                   "Provide allow_overpayment=true with Admin privileges to proceed.",
-        )
-
-    if payload.allow_overpayment and staff.role not in (StaffRole.SUPER_ADMIN.value, StaffRole.ADMIN.value):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only administrators can authorize payments exceeding remaining balance.",
-        )
-
-    # 4. Waterfall Cascading Allocation across installments
-    sorted_installments = sorted(plan.installments, key=lambda x: x.installment_number)
-
-    # Determine starting index
-    start_idx = 0
-    if target_installment_number:
-        for idx, inst in enumerate(sorted_installments):
-            if inst.installment_number == target_installment_number:
-                start_idx = idx
-                break
-
-    # Waterfall allocation
-    unallocated_payment = payload.amount
-    primary_installment_id = None
-
-    for inst in sorted_installments[start_idx:]:
-        if unallocated_payment <= Decimal("0.00"):
-            break
-
-        needed = quantize_money(inst.amount_due - inst.amount_paid)
-        if needed <= Decimal("0.00"):
-            continue
-
-        if primary_installment_id is None:
-            primary_installment_id = inst.id
-
-        if unallocated_payment >= needed:
-            inst.amount_paid = quantize_money(inst.amount_paid + needed)
-            inst.status = EmiInstallmentStatus.PAID.value
-            unallocated_payment = quantize_money(unallocated_payment - needed)
-        else:
-            inst.amount_paid = quantize_money(inst.amount_paid + unallocated_payment)
-            inst.status = EmiInstallmentStatus.PARTIAL.value
-            unallocated_payment = Decimal("0.00")
-
-    # If surplus remains and start_idx > 0, wrap around to earlier unpaid installments
-    if unallocated_payment > Decimal("0.00") and start_idx > 0:
-        for inst in sorted_installments[:start_idx]:
-            if unallocated_payment <= Decimal("0.00"):
-                break
-            needed = quantize_money(inst.amount_due - inst.amount_paid)
-            if needed <= Decimal("0.00"):
-                continue
-
-            if unallocated_payment >= needed:
-                inst.amount_paid = quantize_money(inst.amount_paid + needed)
-                inst.status = EmiInstallmentStatus.PAID.value
-                unallocated_payment = quantize_money(unallocated_payment - needed)
-            else:
-                inst.amount_paid = quantize_money(inst.amount_paid + unallocated_payment)
-                inst.status = EmiInstallmentStatus.PARTIAL.value
-                unallocated_payment = Decimal("0.00")
-
-    # 5. Check if all installments are fully paid -> mark plan completed
-    all_paid = all(inst.status == EmiInstallmentStatus.PAID.value for inst in sorted_installments)
-    if all_paid:
-        plan.status = EmiPlanStatus.COMPLETED.value
-    else:
-        # Re-evaluate overdue / defaulted
-        plan.status = evaluate_plan_status(sorted_installments, plan.status)
-
-    # 6. Create append-only Payment ledger record
-    payment_record = Payment(
-        customer_id=plan.customer_id,
-        invoice_id=plan.invoice_id,
-        created_by=staff.id,
-        method=PaymentMethod.EMI.value,
+    record_emi_payment_internal(
+        db=db,
+        staff=staff,
+        plan_id=id,
         amount=payload.amount,
-        status=PaymentStatus.PAID.value,
         idempotency_key=payload.idempotency_key,
+        method=PaymentMethod.EMI.value,
         reference_id=payload.reference_id,
         notes=payload.notes,
-        emi_plan_id=plan.id,
-        emi_installment_id=primary_installment_id,
+        target_installment_number=target_installment_number,
+        allow_overpayment=payload.allow_overpayment,
     )
-    db.add(payment_record)
 
-    # 7. If linked to an invoice, synchronize invoice payment_status in same transaction
-    if plan.invoice_id:
-        inv_query = db.execute(
-            select(Invoice)
-            .options(selectinload(Invoice.payments))
-            .where(Invoice.id == plan.invoice_id)
-        )
-        invoice = inv_query.scalar_one_or_none()
-        if invoice:
-            existing_invoice_paid = sum(
-                (p.amount for p in invoice.payments if p.status == PaymentStatus.PAID.value),
-                Decimal("0.00"),
-            )
-            new_invoice_paid = existing_invoice_paid + payload.amount
-            if new_invoice_paid >= invoice.grand_total:
-                invoice.payment_status = "paid"
-            elif new_invoice_paid > Decimal("0.00"):
-                invoice.payment_status = "partially_paid"
-            else:
-                invoice.payment_status = "unpaid"
-
-    db.commit()
-
-    # Re-fetch and return updated plan details
+    # Return refreshed plan details
     return get_emi_plan(id=id, db=db, staff=staff)
 
 

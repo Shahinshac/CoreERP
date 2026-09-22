@@ -2,6 +2,7 @@
 from app.modules.auth.models import Customer, StaffRole, StaffUser
 from app.modules.catalog.models import Brand, Category, Product
 from app.modules.finance.models import Expense
+from app.modules.hr.models import SalaryRecord, SalaryRecordStatus
 from app.modules.inventory.models import MovementType, StockMovement
 from app.modules.invoicing.models import (
     CreditNote,
@@ -56,4 +57,7 @@ __all__ = [
     "EmiPlanStatus",
     "EmiInstallmentStatus",
     "Expense",
+    "SalaryRecord",
+    "SalaryRecordStatus",
 ]
+
