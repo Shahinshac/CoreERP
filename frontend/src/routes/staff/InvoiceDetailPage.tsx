@@ -3,8 +3,10 @@ import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
   Building,
+  CreditCard,
   Download,
   Printer,
+  QrCode,
   RotateCcw,
   User,
 } from "lucide-react"
@@ -13,6 +15,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CreditNoteModal } from "@/features/invoicing/CreditNoteModal"
 import { Invoice, invoicingApi } from "@/features/invoicing/api"
+import { Payment, paymentsApi } from "@/features/payments/api"
+import { PaymentRecordModal } from "@/features/payments/PaymentRecordModal"
+import { UPIQRModal } from "@/features/payments/UPIQRModal"
 
 export const InvoiceDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
@@ -22,6 +27,11 @@ export const InvoiceDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [isDownloading, setIsDownloading] = useState(false)
   const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false)
+
+  // Payments State
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [upiModalOpen, setUpiModalOpen] = useState(false)
 
   const fetchInvoice = async () => {
     if (!id) return
@@ -37,9 +47,29 @@ export const InvoiceDetailPage: React.FC = () => {
     }
   }
 
+  const fetchPayments = async () => {
+    if (!id) return
+    try {
+      const res = await paymentsApi.list({ invoice_id: id })
+      setPayments(res.items)
+    } catch {
+      // Non-blocking silently on initial payment fetch
+    }
+  }
+
   useEffect(() => {
     fetchInvoice()
+    fetchPayments()
   }, [id])
+
+  // Total paid calculation
+  const totalPaid = payments
+    .filter((p) => p.status === "paid")
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+
+  const remainingBalance = invoice
+    ? Math.max(0, parseFloat(invoice.grand_total) - totalPaid)
+    : 0
 
   const handleDownloadPdf = async () => {
     if (!invoice) return
@@ -123,6 +153,29 @@ export const InvoiceDetailPage: React.FC = () => {
             <Download className="h-4 w-4" />
             {isDownloading ? "Streaming PDF..." : "Download Official PDF"}
           </Button>
+
+          {!invoice.is_cancelled && remainingBalance > 0 && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUpiModalOpen(true)}
+                className="h-9 gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <QrCode className="h-4 w-4" />
+                Scan UPI QR
+              </Button>
+
+              <Button
+                size="sm"
+                onClick={() => setPaymentModalOpen(true)}
+                className="h-9 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm"
+              >
+                <CreditCard className="h-4 w-4" />
+                Record Payment
+              </Button>
+            </>
+          )}
 
           {!invoice.is_cancelled && (
             <Button
@@ -405,6 +458,102 @@ export const InvoiceDetailPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Payment History & Settlement Ledger */}
+        <div className="mt-6 pt-5 border-t border-slate-200 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-slate-800 font-bold text-xs">
+              <CreditCard className="h-4 w-4 text-emerald-600" />
+              PAYMENT HISTORY & SETTLEMENT LEDGER
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-slate-500 font-sans">
+                Settled: <span className="font-bold text-emerald-600 font-mono">₹{totalPaid.toFixed(2)}</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="text-slate-500 font-sans">
+                Balance:{" "}
+                <span className={`font-bold font-mono ${remainingBalance > 0 ? "text-amber-600" : "text-slate-600"}`}>
+                  ₹{remainingBalance.toFixed(2)}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          {payments.length === 0 ? (
+            <div className="p-6 rounded-xl border border-dashed border-slate-200 text-center space-y-2 bg-slate-50/50">
+              <p className="text-xs text-slate-500">
+                No payments have been recorded for this invoice yet.
+              </p>
+              {!invoice.is_cancelled && (
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPaymentModalOpen(true)}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+                    Record First Payment
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-xs font-mono">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-sans">
+                    <th className="py-2.5 px-3 text-left font-semibold">Payment ID / Date</th>
+                    <th className="py-2.5 px-3 text-left font-semibold">Method</th>
+                    <th className="py-2.5 px-3 text-left font-semibold">Reference / Gateway ID</th>
+                    <th className="py-2.5 px-3 text-center font-semibold">Status</th>
+                    <th className="py-2.5 px-3 text-right font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payments.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-3">
+                        <div className="font-semibold text-slate-800">
+                          {p.id.slice(0, 8)}...
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-sans">
+                          {new Date(p.created_at).toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 font-sans">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase bg-slate-100 text-slate-700">
+                          {p.method}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {p.reference_id || <span className="text-slate-300 italic font-sans">Direct Cash / N/A</span>}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-sans">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] uppercase font-bold ${
+                            p.status === "paid"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : p.status === "failed"
+                              ? "bg-rose-50 text-rose-700 border-rose-200"
+                              : "bg-amber-50 text-amber-700 border-amber-200"
+                          }`}
+                        >
+                          {p.status}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                        ₹{parseFloat(p.amount).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Credit Note Reversal Modal */}
@@ -412,7 +561,37 @@ export const InvoiceDetailPage: React.FC = () => {
         open={creditNoteModalOpen}
         onOpenChange={setCreditNoteModalOpen}
         invoice={invoice}
-        onSuccess={() => fetchInvoice()}
+        onSuccess={() => {
+          fetchInvoice()
+          fetchPayments()
+        }}
+      />
+
+      {/* Payment Recording Modal */}
+      <PaymentRecordModal
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+        invoice={invoice}
+        remainingBalance={remainingBalance}
+        onSuccess={() => {
+          fetchInvoice()
+          fetchPayments()
+        }}
+        onOpenUpiQr={() => {
+          setPaymentModalOpen(false)
+          setUpiModalOpen(true)
+        }}
+      />
+
+      {/* Static UPI QR Modal */}
+      <UPIQRModal
+        open={upiModalOpen}
+        onOpenChange={setUpiModalOpen}
+        invoice={invoice}
+        onRecordPayment={() => {
+          setUpiModalOpen(false)
+          setPaymentModalOpen(true)
+        }}
       />
     </div>
   )

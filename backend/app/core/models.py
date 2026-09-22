@@ -10,6 +10,7 @@ from app.modules.invoicing.models import (
     InvoiceItem,
     InvoiceSequence,
 )
+from app.modules.payments.models import Payment, PaymentMethod, PaymentStatus
 from app.modules.sales.models import (
     Purchase,
     PurchaseItem,
@@ -41,5 +42,8 @@ __all__ = [
     "InvoiceItem",
     "CreditNote",
     "CreditNoteItem",
+    "Payment",
+    "PaymentMethod",
+    "PaymentStatus",
     "Expense",
 ]

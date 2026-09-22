@@ -99,6 +99,7 @@ class Invoice(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         "CreditNote",
         back_populates="invoice",
     )
+    payments = relationship("app.modules.payments.models.Payment", back_populates="invoice")
     sale = relationship("app.modules.sales.models.Sale")
     customer = relationship("app.modules.auth.models.Customer")
     staff = relationship("app.modules.auth.models.StaffUser")

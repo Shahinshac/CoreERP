@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     SELLER_ADDRESS: str = "123 Commercial Hub, MG Road, Mumbai, Maharashtra 400001"
     SELLER_PHONE: str = "+91 9876543210"
     SELLER_EMAIL: str = "billing@myretailstore.com"
+    SELLER_UPI_ID: str = "retailstore@upi"
+    SELLER_UPI_NAME: str = "My Retail Store"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
