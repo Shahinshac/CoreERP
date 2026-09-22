@@ -1,0 +1,18 @@
+name: Keepalive Ping
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend
+        run: |
+          if [ -n "${{ secrets.BACKEND_URL }}" ]; then
+            curl -f -s "${{ secrets.BACKEND_URL }}/api/ping" || exit 1
+          else
+            echo "BACKEND_URL secret is not set, skipping ping."
+          fi
