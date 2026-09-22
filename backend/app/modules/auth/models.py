@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Enum, String
+from sqlalchemy import Enum, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -54,5 +54,9 @@ class Customer(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     )
     phone: Mapped[str | None] = mapped_column(
         String(50),
+        nullable=True,
+    )
+    address: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )

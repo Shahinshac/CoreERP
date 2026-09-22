@@ -13,7 +13,6 @@ import {
   ShoppingBag,
   TrendingUp,
   UserCheck,
-  Users,
 } from "lucide-react"
 
 // Lazy loaded page chunks for modular code splitting
@@ -43,6 +42,9 @@ const CustomerModulePlaceholder = React.lazy(() =>
 // Real Functional Modules
 const ProductsPage = React.lazy(() => import("./staff/ProductsPage"))
 const InventoryPage = React.lazy(() => import("./staff/InventoryPage"))
+const POSPage = React.lazy(() => import("./staff/POSPage"))
+const CustomersPage = React.lazy(() => import("./staff/CustomersPage"))
+const ReturnsPage = React.lazy(() => import("./staff/ReturnsPage"))
 
 // Fallback spinner / skeleton
 const PageLoadingFallback = () => (
@@ -110,15 +112,15 @@ export const router = createBrowserRouter([
     path: "/staff/sales",
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
-        <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Sales"
-              description="Sales orders, POS, and supplier purchases"
-              icon={ShoppingBag}
-            />
-          )}
-        </StaffShell>
+        <StaffShell>{withSuspense(<POSPage />)}</StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/returns",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
+        <StaffShell>{withSuspense(<ReturnsPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },
@@ -126,15 +128,7 @@ export const router = createBrowserRouter([
     path: "/staff/customers",
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
-        <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Customers"
-              description="Customer directory and relationship profiles"
-              icon={Users}
-            />
-          )}
-        </StaffShell>
+        <StaffShell>{withSuspense(<CustomersPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },

@@ -43,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Products", href: "/staff/products", icon: Package, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
   { title: "Inventory", href: "/staff/inventory", icon: Boxes, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
   { title: "Sales", href: "/staff/sales", icon: ShoppingBag, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
+  { title: "Returns", href: "/staff/returns", icon: RotateCcw, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
   { title: "Customers", href: "/staff/customers", icon: Users, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
   { title: "Invoices", href: "/staff/invoices", icon: FileText, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff", "Accountant"] },
   { title: "Payments", href: "/staff/payments", icon: CreditCard, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff", "Accountant"] },
