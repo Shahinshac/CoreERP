@@ -31,7 +31,8 @@ jobs:
           DUMP_FILE="backups/erp_backup_${TIMESTAMP}.sql.gz"
           
           echo "Executing pg_dump for backup timestamp: ${TIMESTAMP}..."
-          pg_dump "${DATABASE_URL}" --no-owner --no-acl --clean --if-exists | gzip > "${DUMP_FILE}"
+          CLEAN_URL=$(echo "${DATABASE_URL}" | sed 's/postgresql+psycopg:/postgresql:/')
+          pg_dump "${CLEAN_URL}" --no-owner --no-acl --clean --if-exists | gzip > "${DUMP_FILE}"
 
           # Verify dump is not empty
           FILE_SIZE=$(stat -c%s "${DUMP_FILE}")
