@@ -1,8 +1,9 @@
 import enum
+import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import JSON, Date, DateTime, Enum, Numeric, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import JSON, Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, Text, Uuid
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 from app.core.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
@@ -66,6 +67,19 @@ class StaffUser(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         DateTime(timezone=True),
         nullable=True,
     )
+    totp_secret: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+    is_totp_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+    totp_backup_codes: Mapped[list | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
 
 
 class Customer(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
@@ -101,3 +115,72 @@ class Customer(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         String(100),
         nullable=True,
     )
+
+
+class CustomerPasswordReset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "customer_password_resets"
+
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("customers.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    used_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    customer: Mapped["Customer"] = relationship("Customer")
+
+
+class StaffSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "staff_sessions"
+
+    staff_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("staff_users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    refresh_token_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+    user_agent: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    ip_address: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+    )
+    is_revoked: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+        index=True,
+    )
+    last_active_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    staff: Mapped["StaffUser"] = relationship("StaffUser")
+
+

@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 import uuid
 from pydantic import BaseModel, ConfigDict, field_validator
 
@@ -72,6 +73,7 @@ class ProductBase(BaseModel):
     selling_price: Decimal
     gst_rate: Decimal = Decimal("0.00")
     min_stock: Decimal = Decimal("0.000")
+    is_pinned: bool = False
 
     @field_validator("purchase_price", mode="before")
     @classmethod
@@ -111,6 +113,7 @@ class ProductUpdate(BaseModel):
     gst_rate: Decimal | None = None
     min_stock: Decimal | None = None
     is_active: bool | None = None
+    is_pinned: bool | None = None
 
     @field_validator("purchase_price", mode="before")
     @classmethod
@@ -141,6 +144,10 @@ class ProductUpdate(BaseModel):
         return validate_quantity_decimal(v, allow_negative=False, field_name="Minimum stock")
 
 
+class ProductPinUpdate(BaseModel):
+    is_pinned: bool
+
+
 class ProductResponse(BaseModel):
     id: uuid.UUID
     name: str
@@ -156,7 +163,9 @@ class ProductResponse(BaseModel):
     current_stock: Decimal
     min_stock: Decimal
     image_path: str | None
+    image_public_id: str | None = None
     is_active: bool
+    is_pinned: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -164,3 +173,28 @@ class ProductResponse(BaseModel):
     brand: BrandResponse | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ==========================================
+# BULK IMPORT SCHEMAS
+# ==========================================
+
+class RowImportResult(BaseModel):
+    row_number: int
+    data: dict[str, Any]
+    is_valid: bool
+    errors: list[str] = []
+
+
+class ImportPreviewResponse(BaseModel):
+    total_rows: int
+    valid_count: int
+    invalid_count: int
+    rows: list[RowImportResult]
+
+
+class ImportConfirmResponse(BaseModel):
+    total_processed: int
+    imported_count: int
+    skipped_count: int
+    results: list[RowImportResult]

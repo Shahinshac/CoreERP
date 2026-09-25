@@ -30,6 +30,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   const [name, setName] = useState("")
   const [sku, setSku] = useState("")
   const [barcode, setBarcode] = useState("")
+  const [hsnCode, setHsnCode] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [brandId, setBrandId] = useState("")
   const [unit, setUnit] = useState("pcs")
@@ -37,6 +38,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   const [sellingPrice, setSellingPrice] = useState("")
   const [gstRate, setGstRate] = useState("18.00")
   const [minStock, setMinStock] = useState("5.000")
+  const [isPinned, setIsPinned] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { data: categories = [] } = useQuery({
@@ -56,6 +58,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
       setName(product.name)
       setSku(product.sku)
       setBarcode(product.barcode || "")
+      setHsnCode(product.hsn_code || "")
       setCategoryId(product.category_id)
       setBrandId(product.brand_id)
       setUnit(product.unit)
@@ -63,10 +66,12 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
       setSellingPrice(product.selling_price)
       setGstRate(product.gst_rate)
       setMinStock(product.min_stock)
+      setIsPinned(!!product.is_pinned)
     } else {
       setName("")
       setSku("")
       setBarcode("")
+      setHsnCode("")
       setCategoryId(categories[0]?.id || "")
       setBrandId(brands[0]?.id || "")
       setUnit("pcs")
@@ -74,6 +79,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
       setSellingPrice("")
       setGstRate("18.00")
       setMinStock("5.000")
+      setIsPinned(false)
     }
   }, [product, open, categories, brands])
 
@@ -94,6 +100,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           name: name.trim(),
           sku: sku.trim(),
           barcode: barcode.trim() || null,
+          hsn_code: hsnCode.trim() || null,
           category_id: categoryId,
           brand_id: brandId,
           unit: unit.trim(),
@@ -101,6 +108,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           selling_price: sellingPrice,
           gst_rate: gstRate,
           min_stock: minStock,
+          is_pinned: isPinned,
         })
         toast.success("Product updated successfully")
       } else {
@@ -108,6 +116,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           name: name.trim(),
           sku: sku.trim(),
           barcode: barcode.trim() || null,
+          hsn_code: hsnCode.trim() || null,
           category_id: categoryId,
           brand_id: brandId,
           unit: unit.trim(),
@@ -115,6 +124,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           selling_price: sellingPrice,
           gst_rate: gstRate,
           min_stock: minStock,
+          is_pinned: isPinned,
         })
         toast.success("Product created successfully")
       }
@@ -166,6 +176,15 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
               placeholder="Optional EAN/UPC"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-medium text-slate-700">HSN / SAC Code</label>
+            <Input
+              value={hsnCode}
+              onChange={(e) => setHsnCode(e.target.value)}
+              placeholder="e.g. 9403, 998311"
             />
           </div>
 
@@ -263,6 +282,19 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
             <p className="text-xs text-slate-500">
               Flags low-stock badge when current inventory falls to or below this quantity.
             </p>
+          </div>
+
+          <div className="col-span-2 flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="isPinnedProduct"
+              checked={isPinned}
+              onChange={(e) => setIsPinned(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <label htmlFor="isPinnedProduct" className="text-sm font-medium text-slate-700 cursor-pointer">
+              Pin to POS Quick-Picks (shows at the top of POS terminal)
+            </label>
           </div>
         </div>
 

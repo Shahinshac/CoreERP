@@ -49,34 +49,34 @@ export const SalaryPayModal: React.FC<SalaryPayModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md border-white/[0.14] bg-[#0C0C0E]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <DollarSign className="w-5 h-5 text-emerald-600" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-zinc-100">
+            <DollarSign className="w-5 h-5 text-emerald-400" />
             Disburse Salary Payout
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handlePay} className="space-y-4 pt-2">
           {/* Payout Summary Box */}
-          <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2">
+          <div className="p-4 bg-emerald-950/30 border border-emerald-500/20 rounded-xl space-y-2">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Staff Member:</span>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">
+              <span className="text-zinc-400">Staff Member:</span>
+              <span className="font-semibold text-zinc-100">
                 {record.staff_name || record.staff_email}
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-600 dark:text-slate-400">Period:</span>
-              <span className="font-medium text-slate-900 dark:text-slate-100 font-mono">
+              <span className="text-zinc-400">Period:</span>
+              <span className="font-medium text-zinc-100 font-mono">
                 {record.period}
               </span>
             </div>
-            <div className="border-t border-emerald-200 dark:border-emerald-800/80 pt-2 flex justify-between items-center">
-              <span className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">
+            <div className="border-t border-emerald-500/20 pt-2 flex justify-between items-center">
+              <span className="text-sm font-semibold text-emerald-400">
                 Net Payout Amount:
               </span>
-              <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+              <span className="text-xl font-extrabold text-emerald-400 font-mono">
                 ₹{parseFloat(record.net_salary).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               </span>
             </div>
@@ -84,15 +84,15 @@ export const SalaryPayModal: React.FC<SalaryPayModalProps> = ({
 
           {/* Payment Method Selector */}
           <div className="space-y-2">
-            <Label>Payout Method</Label>
+            <Label className="text-zinc-300">Payout Method</Label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setMethod("bank_transfer")}
                 className={`p-3 rounded-lg border text-center flex flex-col items-center gap-1 transition-all ${
                   method === "bank_transfer"
-                    ? "border-emerald-600 bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 font-medium"
-                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-white/[0.14] bg-[#0A0A0C] hover:bg-[#18181C] text-zinc-300"
                 }`}
               >
                 <Building className="w-5 h-5" />
@@ -104,8 +104,8 @@ export const SalaryPayModal: React.FC<SalaryPayModalProps> = ({
                 onClick={() => setMethod("upi")}
                 className={`p-3 rounded-lg border text-center flex flex-col items-center gap-1 transition-all ${
                   method === "upi"
-                    ? "border-emerald-600 bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 font-medium"
-                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-white/[0.14] bg-[#0A0A0C] hover:bg-[#18181C] text-zinc-300"
                 }`}
               >
                 <QrCode className="w-5 h-5" />
@@ -117,8 +117,8 @@ export const SalaryPayModal: React.FC<SalaryPayModalProps> = ({
                 onClick={() => setMethod("cash")}
                 className={`p-3 rounded-lg border text-center flex flex-col items-center gap-1 transition-all ${
                   method === "cash"
-                    ? "border-emerald-600 bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 font-medium"
-                    : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-white/[0.14] bg-[#0A0A0C] hover:bg-[#18181C] text-zinc-300"
                 }`}
               >
                 <Wallet className="w-5 h-5" />
@@ -129,43 +129,46 @@ export const SalaryPayModal: React.FC<SalaryPayModalProps> = ({
 
           {/* Reference ID / UTR */}
           <div className="space-y-1.5">
-            <Label htmlFor="refId">Transaction Reference / UTR Number</Label>
+            <Label htmlFor="refId" className="text-zinc-300">Transaction Reference / UTR Number</Label>
             <Input
               id="refId"
               value={referenceId}
               onChange={(e) => setReferenceId(e.target.value)}
               placeholder="e.g. UTR-20260930-981240"
+              className="bg-[#0A0A0C] border-white/[0.16] text-zinc-100 placeholder:text-zinc-500 font-mono text-sm"
             />
           </div>
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="payNotes">Internal Ledger Notes</Label>
+            <Label htmlFor="payNotes" className="text-zinc-300">Internal Ledger Notes</Label>
             <Input
               id="payNotes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. Cleared via primary company payroll account"
+              className="bg-[#0A0A0C] border-white/[0.16] text-zinc-100 placeholder:text-zinc-500 text-sm"
             />
           </div>
 
-          <div className="text-xs text-slate-500 italic">
+          <div className="text-xs text-zinc-500 italic">
             Note: Marking this record as paid will atomically create an append-only Payment ledger transaction and a Finance Expense entry.
           </div>
 
-          <DialogFooter className="gap-2 pt-2">
+          <DialogFooter className="gap-2 pt-2 border-t border-white/[0.08]">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
+              className="border-white/[0.16] text-zinc-300 hover:bg-[#18181C]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium gap-1.5"
             >
               <CheckCircle className="w-4 h-4" />
               {isSubmitting ? "Disbursing..." : "Confirm Payout"}

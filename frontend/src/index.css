@@ -3,49 +3,43 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-  }
-
+  :root,
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* 1. Base layer: TRUE BLACK #000000 */
+    --background: 0 0% 0%;
+    /* 2. Primary text: High-contrast near-white #F5F5F7 */
+    --foreground: 240 5% 96%;
+
+    /* 3. Elevated surface tone for cards/panels/modals/sidebar: #0C0C0E */
+    --card: 240 6% 5%;
+    --card-foreground: 240 5% 96%;
+
+    --popover: 240 6% 5%;
+    --popover-foreground: 240 5% 96%;
+
+    /* 4. Single Accent: Vivid Electric Blue #3B82F6 (bright, crisp contrast off true black) */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    /* 5. Hover/active surface state: #18181C */
+    --secondary: 240 8% 10%;
+    --secondary-foreground: 240 5% 95%;
+
+    /* 6. Muted tone & text: Secondary text ~78%, Muted ~60-65% */
+    --muted: 240 7% 10%;
+    --muted-foreground: 240 4% 65%;
+
+    --accent: 240 8% 12%;
+    --accent-foreground: 240 5% 96%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* 7. Visible 1px borders: rgba(255,255,255,0.14) */
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
   }
 }
 
@@ -53,8 +47,102 @@
   * {
     @apply border-border;
   }
+  html {
+    color-scheme: dark;
+    background-color: #000000;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    letter-spacing: -0.01em;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.025em;
+  }
+}
+
+/* Custom subtle scrollbar styling for modern dark theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   THERMAL RECEIPT PRINT STYLES (@media print)
+   Supports 58mm and 80mm roll widths with browser-native printing.
+   Hides screen chrome, application navigation, modals, and backdrops.
+   ========================================================================== */
+
+/* Screen style: hide dedicated print portal */
+#thermal-receipt-print-area {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    overflow: visible !important;
+  }
+
+  /* Completely hide application root, navigation, sidebars, modals, and toasts */
+  #root,
+  [data-sonner-toaster],
+  .no-print {
+    display: none !important;
+  }
+
+  /* Make dedicated print container visible and isolate it */
+  #thermal-receipt-print-area {
+    display: block !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  #thermal-receipt-print-area.receipt-58mm {
+    width: 58mm !important;
+    max-width: 58mm !important;
+  }
+
+  #thermal-receipt-print-area.receipt-80mm {
+    width: 80mm !important;
+    max-width: 80mm !important;
+  }
+
+  #thermal-receipt-print-area * {
+    color: #000000 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
   }
 }

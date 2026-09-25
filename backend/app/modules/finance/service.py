@@ -91,7 +91,7 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
         .join(Product, StockMovement.product_id == Product.id)
         .where(
             StockMovement.movement_type == MovementType.IN,
-            StockMovement.reference_type != "purchase",
+            func.lower(StockMovement.reference_type) != "purchase",
             StockMovement.created_at >= start_dt,
             StockMovement.created_at <= end_dt,
         )

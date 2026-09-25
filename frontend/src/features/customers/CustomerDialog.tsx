@@ -85,8 +85,8 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <DialogHeader>
-          <DialogTitle>{customer ? "Edit Customer Profile" : "Register New Customer"}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-[#F5F5F7]">{customer ? "Edit Customer Profile" : "Register New Customer"}</DialogTitle>
+          <DialogDescription className="text-[#94949C]">
             {customer
               ? "Update client contact details and account status."
               : "Create a customer record for POS checkout billing and loyalty profiles."}
@@ -95,7 +95,7 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
 
         <div className="space-y-3 text-sm">
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Full Name *</label>
+            <label className="font-medium text-[#C4C4C8]">Full Name *</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -105,7 +105,7 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Email Address *</label>
+            <label className="font-medium text-[#C4C4C8]">Email Address *</label>
             <Input
               type="email"
               value={email}
@@ -115,12 +115,12 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
               required
             />
             {customer && (
-              <p className="text-[11px] text-slate-500">Email cannot be changed after registration.</p>
+              <p className="text-[11px] text-[#94949C]">Email cannot be changed after registration.</p>
             )}
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Phone Number</label>
+            <label className="font-medium text-[#C4C4C8]">Phone Number</label>
             <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -129,7 +129,7 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Billing Address / Notes</label>
+            <label className="font-medium text-[#C4C4C8]">Billing Address / Notes</label>
             <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
@@ -144,9 +144,9 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
                 id="is_active_toggle"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                className="rounded border-white/[0.16] bg-[#0A0A0C] text-primary focus:ring-primary h-4 w-4"
               />
-              <label htmlFor="is_active_toggle" className="text-sm font-medium text-slate-700">
+              <label htmlFor="is_active_toggle" className="text-sm font-medium text-[#C4C4C8]">
                 Customer Account Active
               </label>
             </div>
@@ -162,7 +162,7 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-white font-medium">
             {isSubmitting ? "Saving..." : customer ? "Save Changes" : "Register Customer"}
           </Button>
         </DialogFooter>

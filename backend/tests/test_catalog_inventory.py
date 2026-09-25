@@ -413,3 +413,58 @@ def test_image_upload_validation(client: TestClient, db_session: Session):
     assert data["image_path"] is not None
     assert data["image_path"].startswith(f"products/{prod.id}/")
     assert data["image_path"].endswith(".webp")
+
+    # 4. Storage provider failure mid-request fails loudly (502) and does NOT save broken path (Cloudinary error shape)
+    prod_err = Product(
+        name="Image Fail Item",
+        sku=f"IMG-FAIL-{uuid.uuid4().hex[:6]}",
+        category_id=cat.id,
+        brand_id=brand.id,
+        purchase_price=Decimal("15.00"),
+        selling_price=Decimal("30.00"),
+        current_stock=Decimal("5.000"),
+        min_stock=Decimal("2.000"),
+        image_path=None,
+    )
+    db_session.add(prod_err)
+    db_session.commit()
+
+    from unittest.mock import patch, AsyncMock
+    from app.core.config import settings
+
+    # Test Cloudinary upload failure (e.g. remote API quota error or connection drop)
+    with patch.object(settings, "CLOUDINARY_URL", "cloudinary://test_key:test_secret@test_cloud"), \
+         patch("cloudinary.uploader.upload", side_effect=Exception("Cloudinary quota exceeded / rate limit")):
+
+        fail_file = {"file": ("product2.png", img_buf.getvalue(), "image/png")}
+        resp_err = client.post(f"/api/catalog/products/{prod_err.id}/image", files=fail_file, headers=admin_headers)
+
+        assert resp_err.status_code == 502
+        err_msg = resp_err.json().get("detail") or resp_err.json().get("error", {}).get("message", "")
+        assert "Storage upload failed" in err_msg
+
+        # Verify DB was NOT corrupted with broken/phantom image_path or image_public_id
+        db_session.refresh(prod_err)
+        assert prod_err.image_path is None
+        assert prod_err.image_public_id is None
+
+    # 5. Successful Cloudinary upload stores secure_url and public_id
+    with patch.object(settings, "CLOUDINARY_URL", "cloudinary://test_key:test_secret@test_cloud"), \
+         patch("cloudinary.uploader.upload", return_value={
+             "secure_url": f"https://res.cloudinary.com/test_cloud/image/upload/v12345/products/{prod_err.id}/test.webp",
+             "public_id": f"products/{prod_err.id}/test",
+             "format": "webp",
+             "bytes": len(img_buf.getvalue()),
+         }):
+
+        success_file = {"file": ("product3.png", img_buf.getvalue(), "image/png")}
+        resp_ok = client.post(f"/api/catalog/products/{prod_err.id}/image", files=success_file, headers=admin_headers)
+
+        assert resp_ok.status_code == 200
+        ok_data = resp_ok.json()
+        assert ok_data["image_path"].startswith("https://res.cloudinary.com/")
+        assert ok_data["image_public_id"] == f"products/{prod_err.id}/test"
+
+        db_session.refresh(prod_err)
+        assert prod_err.image_path == ok_data["image_path"]
+        assert prod_err.image_public_id == ok_data["image_public_id"]

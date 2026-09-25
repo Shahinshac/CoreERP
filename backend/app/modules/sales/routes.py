@@ -5,26 +5,54 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.money import quantize_money, quantize_quantity
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff
 from app.modules.auth.models import Customer, StaffUser
 from app.modules.catalog.models import Product
 from app.modules.inventory.models import MovementType, StockMovement
+from app.modules.payments.models import Payment, PaymentStatus
 from app.modules.sales.models import ReturnItem, Sale, SaleItem, SaleReturn
 from app.modules.sales.schemas import (
     CartItemInput,
     POSCheckoutRequest,
+    POSProductResponse,
     POSReturnRequest,
     ReturnItemResponse,
     SaleItemResponse,
     SaleResponse,
     SaleReturnResponse,
+    SplitPaymentDetail,
 )
 
 logger = logging.getLogger("app.sales")
 
 pos_router = APIRouter(prefix="/api/pos", tags=["Point of Sale"])
+
+
+# ==========================================
+# 0. STORE INFORMATION FOR POS RECEIPT
+# ==========================================
+
+@pos_router.get("/store-info")
+def get_pos_store_info(
+    _: StaffUser = Depends(get_current_staff),
+):
+    """
+    Returns store branding and statutory contact details for thermal receipt printing.
+    """
+    return {
+        "store_name": settings.SELLER_NAME,
+        "gstin": settings.SELLER_GSTIN,
+        "state": settings.SELLER_STATE,
+        "state_code": settings.SELLER_STATE_CODE,
+        "address": settings.SELLER_ADDRESS,
+        "phone": settings.SELLER_PHONE,
+        "email": settings.SELLER_EMAIL,
+        "upi_id": settings.SELLER_UPI_ID,
+    }
 
 
 # ==========================================
@@ -68,6 +96,56 @@ def search_pos_products(
         }
         for p in products
     ]
+
+
+@pos_router.get("/products/barcode", response_model=POSProductResponse)
+def lookup_pos_product_by_barcode(
+    barcode: str = Query(..., min_length=1),
+    db: Session = Depends(get_db),
+    _: StaffUser = Depends(get_current_staff),
+):
+    """
+    Lookup an active product by exact barcode or SKU for POS barcode scanner.
+    First matches exact barcode, then exact SKU.
+    Returns 404 if not found.
+    """
+    code = barcode.strip()
+    product = (
+        db.query(Product)
+        .filter(
+            Product.is_active == True,
+            Product.barcode == code,
+        )
+        .first()
+    )
+    if not product:
+        product = (
+            db.query(Product)
+            .filter(
+                Product.is_active == True,
+                Product.sku.ilike(code),
+            )
+            .first()
+        )
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product not found for barcode: {code}",
+        )
+
+    return {
+        "id": product.id,
+        "name": product.name,
+        "sku": product.sku,
+        "barcode": product.barcode,
+        "unit": product.unit,
+        "selling_price": product.selling_price,
+        "gst_rate": product.gst_rate,
+        "current_stock": product.current_stock,
+        "min_stock": product.min_stock,
+        "image_path": product.image_path,
+    }
 
 
 # ==========================================
@@ -173,6 +251,57 @@ def pos_checkout(
         tax_amount = Decimal("0.00")  # Phase 6 placeholder pre-GST subtotal only
         grand_total = quantize_money(subtotal - order_discount + tax_amount)
 
+        # Validate payment method and split payment portions
+        payment_details_data = None
+        if payload.payment_method == "split" or payload.split_payments:
+            if not payload.split_payments:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Split payment requires at least one payment portion.",
+                )
+
+            methods_seen = set()
+            for p in payload.split_payments:
+                m = p.method.strip().lower()
+                if m in methods_seen:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Duplicate payment method '{m}' in split payment.",
+                    )
+                methods_seen.add(m)
+                if p.amount <= Decimal("0.00"):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Split payment portion for '{m}' must be strictly greater than 0.00.",
+                    )
+
+            total_split = sum((quantize_money(p.amount) for p in payload.split_payments), Decimal("0.00"))
+            total_split = quantize_money(total_split)
+
+            if total_split < grand_total:
+                remaining = quantize_money(grand_total - total_split)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Split payment underpaid: Total entered (₹{total_split}) is less than payable amount (₹{grand_total}). Remaining: ₹{remaining}.",
+                )
+            elif total_split > grand_total:
+                excess = quantize_money(total_split - grand_total)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Split payment overpaid: Total entered (₹{total_split}) exceeds payable amount (₹{grand_total}). Discrepancy: ₹{excess}.",
+                )
+
+            final_payment_method = "split"
+            payment_details_data = [
+                {"method": p.method.strip().lower(), "amount": str(quantize_money(p.amount))}
+                for p in payload.split_payments
+            ]
+        else:
+            final_payment_method = payload.payment_method.strip().lower()
+            payment_details_data = [
+                {"method": final_payment_method, "amount": str(grand_total)}
+            ]
+
         # Create Sale
         sale = Sale(
             invoice_number=invoice_num,
@@ -183,11 +312,26 @@ def pos_checkout(
             tax_amount=tax_amount,
             total_amount=grand_total,
             status="completed",
-            payment_method=payload.payment_method,
+            payment_method=final_payment_method,
+            payment_details=payment_details_data,
             notes=payload.notes,
         )
         db.add(sale)
         db.flush()
+
+        # Record payment ledger entries
+        for p in payment_details_data:
+            payment_record = Payment(
+                customer_id=customer.id if customer else None,
+                created_by=current_staff.id,
+                method=p["method"],
+                amount=Decimal(p["amount"]),
+                status=PaymentStatus.PAID.value,
+                idempotency_key=f"pos-{sale.id}-{p['method']}",
+                reference_id=sale.invoice_number,
+                notes=f"POS Sale {sale.invoice_number} ({p['method'].upper()})",
+            )
+            db.add(payment_record)
 
         sale_items_created = []
         for line in line_items_data:
@@ -219,6 +363,23 @@ def pos_checkout(
             )
             db.add(movement)
 
+        log_audit_event(
+            db=db,
+            event_type="pos.sale_completed",
+            description=f"POS Sale completed: Invoice #{sale.invoice_number}, Total: ₹{sale.total_amount}.",
+            actor_id=current_staff.id,
+            actor_type="staff",
+            actor_email=current_staff.email,
+            resource_type="sale",
+            resource_id=str(sale.id),
+            details={
+                "invoice_number": sale.invoice_number,
+                "total_amount": str(sale.total_amount),
+                "payment_method": sale.payment_method,
+                "payment_details": sale.payment_details,
+            },
+        )
+
     db.commit()
     db.refresh(sale)
 
@@ -236,6 +397,12 @@ def pos_checkout(
         total_amount=sale.total_amount,
         status=sale.status,
         payment_method=sale.payment_method,
+        payment_details=[
+            SplitPaymentDetail(method=p["method"], amount=Decimal(p["amount"]))
+            for p in (sale.payment_details or [])
+        ]
+        if sale.payment_details
+        else None,
         notes=sale.notes,
         items=[
             SaleItemResponse(
@@ -446,6 +613,12 @@ def list_sales(
             total_amount=s.total_amount,
             status=s.status,
             payment_method=s.payment_method,
+            payment_details=[
+                SplitPaymentDetail(method=p["method"], amount=Decimal(p["amount"]))
+                for p in (s.payment_details or [])
+            ]
+            if s.payment_details
+            else None,
             notes=s.notes,
             items=[
                 SaleItemResponse(
@@ -497,6 +670,12 @@ def get_sale(
         total_amount=sale.total_amount,
         status=sale.status,
         payment_method=sale.payment_method,
+        payment_details=[
+            SplitPaymentDetail(method=p["method"], amount=Decimal(p["amount"]))
+            for p in (sale.payment_details or [])
+        ]
+        if sale.payment_details
+        else None,
         notes=sale.notes,
         items=[
             SaleItemResponse(

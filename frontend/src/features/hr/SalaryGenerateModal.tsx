@@ -60,19 +60,19 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto border-white/[0.14] bg-[#0C0C0E]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <Calendar className="w-5 h-5 text-indigo-600" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-zinc-100">
+            <Calendar className="w-5 h-5 text-primary" />
             Generate Monthly Salary Run
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5 pt-2">
           {/* Period Selector & Action */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-[#0A0A0C] border border-white/[0.14] rounded-xl items-end">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="periodInput">Payroll Period (YYYY-MM)</Label>
+              <Label htmlFor="periodInput" className="text-zinc-300">Payroll Period (YYYY-MM)</Label>
               <Input
                 id="periodInput"
                 type="month"
@@ -81,14 +81,14 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
                   setPeriod(e.target.value)
                   setPreviewData(null)
                 }}
-                className="bg-white dark:bg-slate-800 font-medium"
+                className="bg-black/40 border-white/[0.16] text-zinc-100 font-medium"
               />
             </div>
             <Button
               type="button"
               onClick={handlePreview}
               disabled={isPreviewing || !period}
-              className="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-900 text-white gap-1.5"
+              className="w-full bg-primary hover:bg-blue-500 text-white gap-1.5 font-medium shadow-none"
             >
               {isPreviewing ? "Calculating..." : "Preview Run"}
               <ArrowRight className="w-4 h-4" />
@@ -97,12 +97,13 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="notes">Run Description / Notes (Optional)</Label>
+            <Label htmlFor="notes" className="text-zinc-300">Run Description / Notes (Optional)</Label>
             <Input
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. September 2026 standard payroll processing"
+              className="bg-[#0A0A0C] border-white/[0.16] text-zinc-100 placeholder:text-zinc-500"
             />
           </div>
 
@@ -111,61 +112,61 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
             <div className="space-y-4">
               {/* Summary Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-4 bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                    <p className="text-xs font-medium text-primary uppercase tracking-wider">
                       Eligible Staff Members
                     </p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    <p className="text-2xl font-bold text-zinc-100">
                       {previewData.eligible_count}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
                     <Users className="w-5 h-5" />
                   </div>
                 </div>
 
-                <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/40 rounded-xl flex items-center justify-between">
+                <div className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    <p className="text-xs font-medium text-emerald-400 uppercase tracking-wider">
                       Total Net Payout
                     </p>
-                    <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    <p className="text-2xl font-bold text-zinc-100">
                       ₹{parseFloat(previewData.total_net_payout).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <div className="w-10 h-10 rounded-full bg-emerald-950 flex items-center justify-center text-emerald-400">
                     <DollarSign className="w-5 h-5" />
                   </div>
                 </div>
               </div>
 
               {/* Staff Table */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-                <div className="bg-slate-50 dark:bg-slate-900/80 px-4 py-2 border-b border-slate-200 dark:border-slate-800 font-semibold text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+              <div className="border border-white/[0.14] rounded-xl overflow-hidden bg-card">
+                <div className="bg-white/[0.02] px-4 py-2 border-b border-white/[0.08] font-semibold text-xs text-zinc-400 uppercase tracking-wider">
                   Staff Calculation Breakdown
                 </div>
-                <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                <div className="max-h-60 overflow-y-auto divide-y divide-white/[0.08] text-sm">
                   {previewData.items.map((item) => (
-                    <div key={item.staff_id} className="p-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 flex items-center justify-between gap-2">
+                    <div key={item.staff_id} className="p-3 hover:bg-white/[0.04] flex items-center justify-between gap-2">
                       <div>
-                        <div className="font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                        <div className="font-medium text-zinc-100 flex items-center gap-2">
                           <span>{item.staff_name}</span>
                           {item.employee_code && (
-                            <span className="text-xs text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                            <span className="text-xs text-zinc-400 font-mono bg-white/[0.06] border border-white/[0.08] px-1.5 py-0.5 rounded">
                               {item.employee_code}
                             </span>
                           )}
                           {item.already_generated && (
-                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 bg-amber-50">
+                            <Badge variant="outline" className="text-xs text-amber-400 border-amber-500/30 bg-amber-950/30">
                               Already Run
                             </Badge>
                           )}
                         </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                        <div className="text-xs text-zinc-400 flex items-center gap-2 mt-0.5">
                           <span>{item.staff_email}</span>
                           {item.is_prorated && (
-                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                            <span className="text-amber-400 font-medium">
                               • {item.proration_reason || `Prorated: ${item.active_days}/${item.total_days} days`}
                             </span>
                           )}
@@ -173,10 +174,10 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
                       </div>
 
                       <div className="text-right">
-                        <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                        <div className="font-bold text-emerald-400">
                           ₹{parseFloat(item.net_salary).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-zinc-500">
                           Base: ₹{parseFloat(item.prorated_base_salary).toLocaleString("en-IN")} | Ded: -₹{parseFloat(item.total_deductions).toLocaleString("en-IN")}
                         </div>
                       </div>
@@ -187,10 +188,10 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
 
               {/* Warning if already generated */}
               {previewData.items.some((i) => i.already_generated) && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="p-3 bg-amber-950/40 border border-amber-500/30 rounded-lg text-xs text-amber-300 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
                   <div>
-                    <span className="font-semibold">Duplicate Records Detected: </span>
+                    <span className="font-semibold text-amber-200">Duplicate Records Detected: </span>
                     One or more staff members already have generated records for {period}. Duplicate generation is rejected by constraint.
                   </div>
                 </div>
@@ -199,12 +200,13 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
           )}
         </div>
 
-        <DialogFooter className="gap-2 pt-4">
+        <DialogFooter className="gap-2 pt-4 border-t border-white/[0.08]">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isGenerating}
+            className="border-white/[0.16] text-zinc-300 hover:bg-[#18181C]"
           >
             Cancel
           </Button>
@@ -217,7 +219,7 @@ export const SalaryGenerateModal: React.FC<SalaryGenerateModalProps> = ({
               previewData.items.length === 0 ||
               previewData.items.some((i) => i.already_generated)
             }
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium gap-1.5"
           >
             <CheckCircle2 className="w-4 h-4" />
             {isGenerating ? "Processing..." : "Confirm & Run Payroll"}

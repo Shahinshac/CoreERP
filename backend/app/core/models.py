@@ -1,5 +1,4 @@
-# Central registry of all ORM models for metadata discovery
-from app.modules.auth.models import Customer, StaffRole, StaffUser
+from app.modules.auth.models import Customer, CustomerPasswordReset, StaffRole, StaffSession, StaffUser
 from app.modules.catalog.models import Brand, Category, Product
 from app.modules.finance.models import Expense, ExpenseCategory, ExpenseSource
 from app.modules.hr.models import SalaryRecord, SalaryRecordStatus
@@ -10,6 +9,8 @@ from app.modules.invoicing.models import (
     Invoice,
     InvoiceItem,
     InvoiceSequence,
+    Quotation,
+    QuotationItem,
 )
 from app.modules.emi.models import (
     EmiInstallment,
@@ -18,7 +19,10 @@ from app.modules.emi.models import (
     EmiPlanStatus,
 )
 from app.modules.payments.models import Payment, PaymentMethod, PaymentStatus
+from app.modules.notifications.models import Notification
 from app.modules.sales.models import (
+    CashDrawerSession,
+    CashMovement,
     Purchase,
     PurchaseItem,
     ReturnItem,
@@ -27,11 +31,23 @@ from app.modules.sales.models import (
     SaleReturn,
     Supplier,
 )
+from app.modules.support.models import (
+    SupportTicket,
+    TicketComment,
+    TicketPriority,
+    TicketStatus,
+    Warranty,
+)
+from app.modules.automation.models import AutomationJobRun
+from app.modules.audit.models import AuditLog
 
 __all__ = [
+    "AuditLog",
     "StaffRole",
     "StaffUser",
+    "StaffSession",
     "Customer",
+    "CustomerPasswordReset",
     "Category",
     "Brand",
     "Product",
@@ -44,11 +60,15 @@ __all__ = [
     "SaleItem",
     "SaleReturn",
     "ReturnItem",
+    "CashDrawerSession",
+    "CashMovement",
     "InvoiceSequence",
     "Invoice",
     "InvoiceItem",
     "CreditNote",
     "CreditNoteItem",
+    "Quotation",
+    "QuotationItem",
     "Payment",
     "PaymentMethod",
     "PaymentStatus",
@@ -61,5 +81,12 @@ __all__ = [
     "ExpenseSource",
     "SalaryRecord",
     "SalaryRecordStatus",
+    "Warranty",
+    "SupportTicket",
+    "TicketComment",
+    "TicketStatus",
+    "TicketPriority",
+    "Notification",
+    "AutomationJobRun",
 ]
 

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.money import parse_decimal, quantize_money
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff, get_current_user_optional
 from app.modules.auth.models import Customer, StaffRole, StaffUser
 from app.modules.catalog.models import Product
@@ -35,9 +36,11 @@ from app.modules.invoicing.schemas import (
     InvoiceListResponse,
     InvoiceResponse,
 )
+from app.modules.invoicing.quotation_routes import quotation_router
 from app.modules.sales.models import Sale, SaleItem
 
 router = APIRouter(prefix="/api/invoicing", tags=["Invoicing"])
+router.include_router(quotation_router)
 
 
 def get_next_sequence_number(db: Session, fy: str, seq_type: str = "INV") -> int:
@@ -220,6 +223,18 @@ def create_invoice_from_sale(
     invoice.igst_amount = quantize_money(total_igst)
     invoice.total_tax = quantize_money(total_cgst + total_sgst + total_igst)
     invoice.grand_total = quantize_money(invoice.subtotal + invoice.total_tax)
+
+    log_audit_event(
+        db=db,
+        event_type="invoice.created",
+        description=f"GST Tax Invoice generated: {invoice.invoice_number}, Grand Total: ₹{invoice.grand_total}.",
+        actor_id=current_staff.id if current_staff else None,
+        actor_type="staff",
+        actor_email=current_staff.email if current_staff else None,
+        resource_type="invoice",
+        resource_id=str(invoice.id),
+        details={"invoice_number": invoice.invoice_number, "grand_total": str(invoice.grand_total), "sale_id": str(sale.id)},
+    )
 
     db.commit()
     db.refresh(invoice)
@@ -537,6 +552,18 @@ def create_credit_note(
     credit_note.igst_refunded = quantize_money(total_igst_ref)
     credit_note.total_tax_refunded = quantize_money(total_cgst_ref + total_sgst_ref + total_igst_ref)
     credit_note.grand_total_refunded = quantize_money(credit_note.subtotal_refunded + credit_note.total_tax_refunded)
+
+    log_audit_event(
+        db=db,
+        event_type="invoice.credit_note_issued",
+        description=f"Credit Note issued: {credit_note.credit_note_number} against Invoice {invoice.invoice_number}, Refunded: ₹{credit_note.grand_total_refunded}.",
+        actor_id=current_staff.id if current_staff else None,
+        actor_type="staff",
+        actor_email=current_staff.email if current_staff else None,
+        resource_type="credit_note",
+        resource_id=str(credit_note.id),
+        details={"credit_note_number": credit_note.credit_note_number, "invoice_id": str(invoice.id), "invoice_number": invoice.invoice_number, "grand_total_refunded": str(credit_note.grand_total_refunded)},
+    )
 
     db.commit()
     db.refresh(credit_note)

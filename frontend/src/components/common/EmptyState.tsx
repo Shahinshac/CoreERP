@@ -18,8 +18,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onAction,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed rounded-xl bg-card/50">
-      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted text-muted-foreground mb-4">
+    <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-white/10 rounded-xl bg-surface-elevated/40">
+      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-white/[0.04] border border-white/[0.08] text-muted-foreground mb-4">
         <Icon className="w-6 h-6" />
       </div>
       <h3 className="text-base font-semibold text-foreground">{title}</h3>

@@ -1,7 +1,7 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
-from sqlalchemy import Date, ForeignKey, Numeric, String, Text, Uuid
+from sqlalchemy import Date, DateTime, ForeignKey, JSON, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -91,6 +91,7 @@ class Sale(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="completed", nullable=False, index=True)
     payment_method: Mapped[str] = mapped_column(String(50), default="cash", nullable=False)
+    payment_details: Mapped[list[dict] | None] = mapped_column(JSON, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     items: Mapped[list["SaleItem"]] = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
@@ -175,3 +176,55 @@ class ReturnItem(Base, UUIDPrimaryKeyMixin, CreatedAtMixin):
     return_record: Mapped["SaleReturn"] = relationship("SaleReturn", back_populates="items")
     sale_item = relationship("SaleItem")
     product = relationship("app.modules.catalog.models.Product")
+
+
+class CashDrawerSession(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "cash_drawer_sessions"
+
+    cashier_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("staff_users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(20), default="open", nullable=False, index=True)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    opening_cash: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    closing_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    expected_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    variance: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    opening_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    closing_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    denominations: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    summary_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    cashier = relationship("app.modules.auth.models.StaffUser")
+    movements: Mapped[list["CashMovement"]] = relationship(
+        "CashMovement",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="CashMovement.created_at",
+    )
+
+
+class CashMovement(Base, UUIDPrimaryKeyMixin, CreatedAtMixin):
+    __tablename__ = "cash_movements"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("cash_drawer_sessions.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    movement_type: Mapped[str] = mapped_column(String(30), nullable=False, index=True)  # cash_in, cash_out, cash_drop
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    reason: Mapped[str] = mapped_column(String(255), nullable=False)
+    performed_by_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("staff_users.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+
+    session: Mapped["CashDrawerSession"] = relationship("CashDrawerSession", back_populates="movements")
+    performed_by = relationship("app.modules.auth.models.StaffUser")

@@ -9,6 +9,7 @@ export interface StaffUser {
   role: StaffRole
   is_active: boolean
   created_at: string
+  is_totp_enabled?: boolean
 }
 
 export interface CustomerUser {
@@ -20,13 +21,20 @@ export interface CustomerUser {
   created_at: string
 }
 
+export interface StaffLoginResult {
+  requires2FA?: boolean
+  tempToken?: string
+  user?: StaffUser
+}
+
 interface AuthContextType {
   user: StaffUser | CustomerUser | null
   identity: "staff" | "customer" | null
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
-  loginStaff: (email: string, password: string) => Promise<StaffUser>
+  loginStaff: (email: string, password: string) => Promise<StaffLoginResult>
+  loginStaff2FA: (tempToken: string, code: string) => Promise<StaffUser>
   loginCustomer: (email: string, password: string) => Promise<CustomerUser>
   registerCustomer: (email: string, password: string, name: string, phone?: string) => Promise<CustomerUser>
   logout: () => Promise<void>
@@ -93,11 +101,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth()
   }, [])
 
-  const loginStaff = async (email: string, password: string): Promise<StaffUser> => {
-    const data = await apiClient.post<{ access_token: string; user: StaffUser }>(
-      "/api/staff/auth/login",
-      { email, password }
-    )
+  const loginStaff = async (email: string, password: string): Promise<StaffLoginResult> => {
+    const data = await apiClient.post<{
+      access_token?: string
+      user?: StaffUser
+      requires_2fa?: boolean
+      temp_token?: string
+    }>("/api/staff/auth/login", { email, password })
+
+    if (data.requires_2fa && data.temp_token) {
+      return { requires2FA: true, tempToken: data.temp_token }
+    }
+
+    if (data.access_token && data.user) {
+      setToken(data.access_token)
+      setUser(data.user)
+      setIdentity("staff")
+      setAccessToken(data.access_token, "staff")
+      return { user: data.user }
+    }
+
+    throw new Error("Invalid response received from authentication service")
+  }
+
+  const loginStaff2FA = async (tempToken: string, code: string): Promise<StaffUser> => {
+    const data = await apiClient.post<{
+      access_token: string
+      user: StaffUser
+    }>("/api/staff/auth/2fa/login", { temp_token: tempToken, code })
+
     setToken(data.access_token)
     setUser(data.user)
     setIdentity("staff")
@@ -158,6 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         isAuthenticated: !!user && !!token,
         loginStaff,
+        loginStaff2FA,
         loginCustomer,
         registerCustomer,
         logout,

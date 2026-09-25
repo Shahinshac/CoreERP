@@ -1,11 +1,14 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   AlertTriangle,
   Boxes,
   Camera,
   Edit,
+  FileSpreadsheet,
   Package,
+  Pin,
   Plus,
   RefreshCw,
   Search,
@@ -26,6 +29,7 @@ import {
 import { catalogApi, Product } from "@/features/catalog/api"
 import { ProductDialog } from "@/features/catalog/ProductDialog"
 import { ProductImageUpload } from "@/features/catalog/ProductImageUpload"
+import { CsvImportModal } from "@/components/common/CsvImportModal"
 import {
   StockOperationDialog,
   StockOperationType,
@@ -33,6 +37,7 @@ import {
 import { useAuth } from "@/features/auth/AuthContext"
 
 export function ProductsPage() {
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const staffUser = user as { email: string; role: string } | null
   const canEdit =
@@ -40,7 +45,7 @@ export function ProductsPage() {
     staffUser?.role === "Admin" ||
     staffUser?.role === "Manager"
 
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => searchParams.get("search") || "")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("")
   const [lowStockFilter, setLowStockFilter] = useState(false)
@@ -48,6 +53,18 @@ export function ProductsPage() {
   // Dialog states
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [importModalOpen, setImportModalOpen] = useState(false)
+
+  useEffect(() => {
+    const q = searchParams.get("search")
+    if (q !== null) {
+      setSearch(q)
+    }
+    if (searchParams.get("action") === "new" && canEdit) {
+      setSelectedProduct(null)
+      setProductDialogOpen(true)
+    }
+  }, [searchParams, canEdit])
 
   const [imageUploadOpen, setImageUploadOpen] = useState(false)
   const [productForImage, setProductForImage] = useState<Product | null>(null)
@@ -113,67 +130,77 @@ export function ProductsPage() {
           </p>
         </div>
         {canEdit && (
-          <Button
-            onClick={() => {
-              setSelectedProduct(null)
-              setProductDialogOpen(true)
-            }}
-            className="flex items-center gap-2 shadow-sm"
-          >
-            <Plus className="h-4 w-4" />
-            Add Product
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setImportModalOpen(true)}
+              className="flex items-center gap-2 border-white/[0.14] text-zinc-300 hover:text-white"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-primary" />
+              Import CSV
+            </Button>
+            <Button
+              onClick={() => {
+                setSelectedProduct(null)
+                setProductDialogOpen(true)
+              }}
+              className="flex items-center gap-2 shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Add Product
+            </Button>
+          </div>
         )}
       </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+        <div className="bg-card rounded-xl p-4 border border-white/[0.14] shadow-none flex items-center gap-3">
+          <div className="p-3 bg-primary/10 text-primary border border-primary/20 rounded-lg">
             <Package className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-500">Total Products</div>
-            <div className="text-xl font-bold text-slate-900">{products.length}</div>
+            <div className="text-xs font-medium text-zinc-400">Total Products</div>
+            <div className="text-xl font-bold text-zinc-100">{products.length}</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
+        <div className="bg-card rounded-xl p-4 border border-white/[0.14] shadow-none flex items-center gap-3">
+          <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-500">Low Stock SKUs</div>
-            <div className="text-xl font-bold text-amber-600">{lowStockCount}</div>
+            <div className="text-xs font-medium text-zinc-400">Low Stock SKUs</div>
+            <div className="text-xl font-bold text-amber-400">{lowStockCount}</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+        <div className="bg-card rounded-xl p-4 border border-white/[0.14] shadow-none flex items-center gap-3">
+          <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
             <Tag className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-500">Categories</div>
-            <div className="text-xl font-bold text-slate-900">{categories.length}</div>
+            <div className="text-xs font-medium text-zinc-400">Categories</div>
+            <div className="text-xl font-bold text-zinc-100">{categories.length}</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center gap-3">
-          <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
+        <div className="bg-card rounded-xl p-4 border border-white/[0.14] shadow-none flex items-center gap-3">
+          <div className="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg">
             <Boxes className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-medium text-slate-500">Brands</div>
-            <div className="text-xl font-bold text-slate-900">{brands.length}</div>
+            <div className="text-xs font-medium text-zinc-400">Brands</div>
+            <div className="text-xl font-bold text-zinc-100">{brands.length}</div>
           </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+      <div className="bg-card p-4 rounded-xl border border-white/[0.14] shadow-none space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-400" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -231,7 +258,7 @@ export function ProductsPage() {
       </div>
 
       {/* Products Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl border border-white/[0.14] shadow-none overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -247,13 +274,13 @@ export function ProductsPage() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                <TableCell colSpan={7} className="h-32 text-center text-zinc-400">
                   Loading catalog inventory...
                 </TableCell>
               </TableRow>
             ) : products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                <TableCell colSpan={7} className="h-32 text-center text-zinc-400">
                   No products found matching the criteria.
                 </TableCell>
               </TableRow>
@@ -261,9 +288,9 @@ export function ProductsPage() {
               products.map((p) => {
                 const isLowStock = parseFloat(p.current_stock) <= parseFloat(p.min_stock)
                 return (
-                  <TableRow key={p.id} className="hover:bg-slate-50/70 transition">
+                  <TableRow key={p.id} className="hover:bg-white/[0.04] transition-colors">
                     <TableCell>
-                      <div className="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                      <div className="h-10 w-10 rounded-lg bg-surface-elevated border border-white/[0.14] flex items-center justify-center overflow-hidden">
                         {p.image_path ? (
                           <img
                             src={p.image_path}
@@ -275,35 +302,44 @@ export function ProductsPage() {
                             }}
                           />
                         ) : (
-                          <Package className="h-5 w-5 text-slate-400" />
+                          <Package className="h-5 w-5 text-zinc-500" />
                         )}
                       </div>
                     </TableCell>
 
                     <TableCell>
-                      <div className="font-semibold text-slate-900">{p.name}</div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-zinc-100">{p.name}</div>
+                        {p.is_pinned && (
+                          <Badge className="bg-primary/20 text-primary border border-primary/30 text-[10px] px-1 py-0 flex items-center gap-1 font-mono">
+                            <Pin className="h-2.5 w-2.5 fill-primary" />
+                            Pinned
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-zinc-400 font-mono mt-0.5">
                         <span>SKU: {p.sku}</span>
                         {p.barcode && <span>• Barcode: {p.barcode}</span>}
+                        {p.hsn_code && <span className="text-zinc-500">• HSN: {p.hsn_code}</span>}
                       </div>
                     </TableCell>
 
                     <TableCell>
                       <div className="flex flex-col gap-1 text-xs">
-                        <span className="font-medium text-slate-700">
+                        <span className="font-medium text-zinc-200">
                           {p.category?.name || "Uncategorized"}
                         </span>
-                        <span className="text-slate-500">{p.brand?.name || "Generic"}</span>
+                        <span className="text-zinc-400">{p.brand?.name || "Generic"}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-right font-mono text-slate-700">
+                    <TableCell className="text-right font-mono text-zinc-300">
                       ₹{parseFloat(p.purchase_price).toFixed(2)}
                     </TableCell>
 
-                    <TableCell className="text-right font-mono font-semibold text-slate-900">
+                    <TableCell className="text-right font-mono font-semibold text-zinc-100">
                       ₹{parseFloat(p.selling_price).toFixed(2)}
-                      <span className="block text-[10px] text-slate-400 font-normal">
+                      <span className="block text-[10px] text-zinc-400 font-normal">
                         GST: {p.gst_rate}%
                       </span>
                     </TableCell>
@@ -313,10 +349,10 @@ export function ProductsPage() {
                         <span
                           className={`font-mono text-sm font-bold ${
                             parseFloat(p.current_stock) < 0
-                              ? "text-rose-600"
+                              ? "text-rose-400"
                               : isLowStock
-                              ? "text-amber-600"
-                              : "text-slate-800"
+                              ? "text-amber-400"
+                              : "text-zinc-200"
                           }`}
                         >
                           {p.current_stock} {p.unit}
@@ -335,7 +371,7 @@ export function ProductsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleOpenStockOp(p, "in")}
-                          className="h-8 px-2 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                          className="h-8 px-2 text-xs text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                         >
                           Stock In
                         </Button>
@@ -343,7 +379,7 @@ export function ProductsPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleOpenStockOp(p, "out")}
-                          className="h-8 px-2 text-xs text-rose-700 border-rose-200 hover:bg-rose-50"
+                          className="h-8 px-2 text-xs text-rose-400 border-rose-500/30 hover:bg-rose-500/10"
                         >
                           Stock Out
                         </Button>
@@ -352,8 +388,28 @@ export function ProductsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
+                              onClick={async () => {
+                                try {
+                                  await catalogApi.toggleProductPin(p.id, !p.is_pinned)
+                                  refetch()
+                                } catch {
+                                  // Error handled
+                                }
+                              }}
+                              className={`h-8 w-8 ${
+                                p.is_pinned
+                                  ? "text-primary hover:text-primary/80 bg-primary/10"
+                                  : "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.08]"
+                              }`}
+                              title={p.is_pinned ? "Unpin from POS quick-picks" : "Pin to POS quick-picks"}
+                            >
+                              <Pin className={`h-4 w-4 ${p.is_pinned ? "fill-primary" : ""}`} />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => handleOpenImageUpload(p)}
-                              className="h-8 w-8 text-slate-500 hover:text-slate-900"
+                              className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
                               title="Upload Photo"
                             >
                               <Camera className="h-4 w-4" />
@@ -362,7 +418,7 @@ export function ProductsPage() {
                               size="icon"
                               variant="ghost"
                               onClick={() => handleEditProduct(p)}
-                              className="h-8 w-8 text-slate-500 hover:text-slate-900"
+                              className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
                               title="Edit Product"
                             >
                               <Edit className="h-4 w-4" />
@@ -399,6 +455,46 @@ export function ProductsPage() {
         onOpenChange={setStockOpOpen}
         product={productForStock}
         initialType={stockOpType}
+        onSuccess={() => refetch()}
+      />
+
+      <CsvImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        title="Import Products"
+        description="Upload a CSV file containing products. Rows are pre-validated before committing. No partial/invalid data is ever silently imported."
+        sampleHeaders={[
+          "name",
+          "sku",
+          "barcode",
+          "hsn_code",
+          "category",
+          "brand",
+          "unit",
+          "purchase_price",
+          "selling_price",
+          "gst_rate",
+          "min_stock",
+          "is_pinned",
+        ]}
+        sampleRows={[
+          [
+            "Ergonomic Chair",
+            "CHAIR-ERG-01",
+            "8901234567890",
+            "9403",
+            "Furniture",
+            "Generic",
+            "pcs",
+            "2500.00",
+            "3999.00",
+            "18.00",
+            "5.000",
+            "true",
+          ],
+        ]}
+        onPreview={catalogApi.previewImport}
+        onConfirm={catalogApi.confirmImport}
         onSuccess={() => refetch()}
       />
     </div>

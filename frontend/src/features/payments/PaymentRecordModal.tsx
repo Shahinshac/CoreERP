@@ -114,11 +114,11 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <div className="space-y-4 max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-emerald-600">
+          <div className="flex items-center gap-2 text-emerald-400">
             <CreditCard className="h-5 w-5" />
-            <DialogTitle>Record Payment</DialogTitle>
+            <DialogTitle className="text-[#F5F5F7]">Record Payment</DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-slate-500">
+          <DialogDescription className="text-xs text-[#94949C]">
             Append-only payment entry. Automatically recalculates invoice payment status.
           </DialogDescription>
         </DialogHeader>
@@ -126,43 +126,43 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5 pt-1">
           {/* Invoice Context Banner */}
           {invoice && (
-            <div className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs space-y-1.5 font-mono">
+            <div className="p-3 rounded-lg border border-white/[0.14] bg-[#0A0A0C] text-xs space-y-1.5 font-mono">
               <div className="flex justify-between">
-                <span className="text-slate-500 font-sans">Invoice:</span>
-                <span className="font-semibold text-slate-800">{invoice.invoice_number}</span>
+                <span className="text-[#94949C] font-sans">Invoice:</span>
+                <span className="font-semibold text-[#F5F5F7]">{invoice.invoice_number}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 font-sans">Grand Total:</span>
-                <span className="text-slate-700">₹{parseFloat(invoice.grand_total).toFixed(2)}</span>
+                <span className="text-[#94949C] font-sans">Grand Total:</span>
+                <span className="text-[#C4C4C8]">₹{parseFloat(invoice.grand_total).toFixed(2)}</span>
               </div>
-              <div className="flex justify-between border-t border-slate-200 pt-1">
-                <span className="text-slate-500 font-sans font-medium">Outstanding Balance:</span>
-                <span className="font-bold text-emerald-600">₹{remainingBalance.toFixed(2)}</span>
+              <div className="flex justify-between border-t border-white/[0.1] pt-1">
+                <span className="text-[#94949C] font-sans font-medium">Outstanding Balance:</span>
+                <span className="font-bold text-emerald-400">₹{remainingBalance.toFixed(2)}</span>
               </div>
             </div>
           )}
 
           {/* Payment Method Selector */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Payment Method</label>
+            <label className="text-xs font-semibold text-[#C4C4C8]">Payment Method</label>
             <Select
               value={method}
               onChange={(e) => setMethod(e.target.value as any)}
-              className="text-xs h-9"
+              className="text-xs h-9 bg-[#0A0A0C] border-white/[0.16] text-[#F5F5F7]"
             >
-              <option value="cash">Cash Receipt</option>
-              <option value="upi">UPI / Instant Transfer</option>
-              <option value="card">Credit / Debit Card</option>
-              <option value="payment_link">Payment Link / Static UPI QR</option>
-              <option value="emi">EMI Settlement (Phase 9)</option>
+              <option value="cash" className="bg-[#0C0C0E] text-[#F5F5F7]">Cash Receipt</option>
+              <option value="upi" className="bg-[#0C0C0E] text-[#F5F5F7]">UPI / Instant Transfer</option>
+              <option value="card" className="bg-[#0C0C0E] text-[#F5F5F7]">Credit / Debit Card</option>
+              <option value="payment_link" className="bg-[#0C0C0E] text-[#F5F5F7]">Payment Link / Static UPI QR</option>
+              <option value="emi" className="bg-[#0C0C0E] text-[#F5F5F7]">EMI Settlement (Phase 9)</option>
             </Select>
           </div>
 
           {/* UPI Shortcut Banner if method is UPI or payment_link */}
           {(method === "upi" || method === "payment_link") && onOpenUpiQr && (
-            <div className="p-2.5 rounded-lg border border-purple-200 bg-purple-50/60 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-purple-900 font-medium">
-                <QrCode className="h-4 w-4 text-purple-600" />
+            <div className="p-2.5 rounded-lg border border-primary/30 bg-primary/10 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-primary font-medium">
+                <QrCode className="h-4 w-4 text-primary" />
                 <span>Show UPI QR Code to Customer</span>
               </div>
               <Button
@@ -170,7 +170,7 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={onOpenUpiQr}
-                className="h-7 text-xs bg-white text-purple-700 border-purple-300 hover:bg-purple-100"
+                className="h-7 text-xs bg-[#0C0C0E] text-primary border-primary/40 hover:bg-primary/20"
               >
                 View QR
               </Button>
@@ -180,14 +180,14 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
           {/* Amount Input */}
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="text-xs font-semibold text-slate-700">
-                Amount to Record (₹) <span className="text-rose-500">*</span>
+              <label className="text-xs font-semibold text-[#C4C4C8]">
+                Amount to Record (₹) <span className="text-rose-400">*</span>
               </label>
               {remainingBalance > 0 && (
                 <button
                   type="button"
                   onClick={() => setAmount(remainingBalance.toFixed(2))}
-                  className="text-[11px] text-blue-600 hover:underline"
+                  className="text-[11px] text-primary hover:underline"
                 >
                   Fill full balance
                 </button>
@@ -206,7 +206,7 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
 
           {/* External Reference ID */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">
+            <label className="text-xs font-semibold text-[#C4C4C8]">
               Reference / Transaction ID (Optional)
             </label>
             <Input
@@ -219,7 +219,7 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Internal Notes (Optional)</label>
+            <label className="text-xs font-semibold text-[#C4C4C8]">Internal Notes (Optional)</label>
             <Input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -230,27 +230,27 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
 
           {/* Overpayment allowance checkbox if applicable */}
           {isOverpayment && (
-            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs space-y-2 text-amber-900">
-              <div className="flex items-start gap-1.5 font-semibold text-amber-800">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-2 text-amber-300">
+              <div className="flex items-start gap-1.5 font-semibold text-amber-300">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
                 <span>Notice: Amount exceeds current invoice balance</span>
               </div>
-              <p className="text-[11px] text-amber-700">
+              <p className="text-[11px] text-amber-300/80">
                 Entered amount ₹{parsedAmount.toFixed(2)} is greater than remaining balance ₹
                 {remainingBalance.toFixed(2)}.
               </p>
               {isAdmin ? (
-                <label className="flex items-center gap-2 font-medium cursor-pointer pt-1">
+                <label className="flex items-center gap-2 font-medium cursor-pointer pt-1 text-amber-200">
                   <input
                     type="checkbox"
                     checked={allowOverpayment}
                     onChange={(e) => setAllowOverpayment(e.target.checked)}
-                    className="rounded border-amber-400 text-amber-600 focus:ring-amber-500"
+                    className="rounded border-amber-500/40 bg-[#0C0C0E] text-primary focus:ring-primary"
                   />
                   <span>Allow Overpayment (Administrator override)</span>
                 </label>
               ) : (
-                <p className="text-[11px] text-rose-600 font-semibold">
+                <p className="text-[11px] text-rose-400 font-semibold">
                   * Overpayment requires Administrator approval.
                 </p>
               )}
@@ -271,7 +271,7 @@ export const PaymentRecordModal: React.FC<PaymentRecordModalProps> = ({
               type="submit"
               size="sm"
               disabled={isSubmitting || (isOverpayment && !allowOverpayment)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium gap-1.5"
             >
               {isSubmitting ? "Recording..." : `Confirm Payment (₹${parsedAmount.toFixed(2)})`}
             </Button>

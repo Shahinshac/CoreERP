@@ -130,3 +130,100 @@ class GenerateInvoiceFromSaleRequest(BaseModel):
     buyer_state: Optional[str] = None
     buyer_address: Optional[str] = None
     notes: Optional[str] = None
+
+
+class QuotationItemCreate(BaseModel):
+    product_id: uuid.UUID
+    quantity: Decimal = Field(..., gt=Decimal("0.000"), description="Quantity")
+    unit_price: Optional[Decimal] = Field(None, gt=Decimal("0.00"), description="Custom unit price; defaults to product selling price")
+    discount_amount: Decimal = Field(default=Decimal("0.00"), ge=Decimal("0.00"), description="Line discount amount")
+
+
+class QuotationCreateRequest(BaseModel):
+    customer_id: Optional[uuid.UUID] = None
+    buyer_name: Optional[str] = None
+    buyer_gstin: Optional[str] = None
+    buyer_state: Optional[str] = None
+    buyer_address: Optional[str] = None
+    buyer_phone: Optional[str] = None
+    valid_until: Optional[date] = None
+    notes: Optional[str] = None
+    items: List[QuotationItemCreate] = Field(..., min_length=1)
+
+
+class QuotationItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    product_id: Optional[uuid.UUID] = None
+    product_name: str
+    product_sku: str
+    hsn_code: Optional[str] = None
+    quantity: Decimal
+    unit_price: Decimal
+    discount_amount: Decimal
+    taxable_value: Decimal
+    gst_rate: Decimal
+    cgst_rate: Decimal
+    cgst_amount: Decimal
+    sgst_rate: Decimal
+    sgst_amount: Decimal
+    igst_rate: Decimal
+    igst_amount: Decimal
+    total_amount: Decimal
+
+
+class QuotationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    quotation_number: str
+    financial_year: str
+    quotation_date: date
+    valid_until: Optional[date] = None
+    customer_id: Optional[uuid.UUID] = None
+    staff_id: uuid.UUID
+
+    seller_name: str
+    seller_gstin: str
+    seller_state: str
+    seller_state_code: Optional[str] = None
+    seller_address: Optional[str] = None
+    seller_phone: Optional[str] = None
+
+    buyer_name: str
+    buyer_gstin: Optional[str] = None
+    buyer_state: str
+    buyer_state_code: Optional[str] = None
+    buyer_address: Optional[str] = None
+    buyer_phone: Optional[str] = None
+
+    is_inter_state: bool
+    place_of_supply: str
+
+    subtotal: Decimal
+    cgst_amount: Decimal
+    sgst_amount: Decimal
+    igst_amount: Decimal
+    total_tax: Decimal
+    grand_total: Decimal
+
+    status: str
+    converted_invoice_id: Optional[uuid.UUID] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    items: List[QuotationItemResponse] = []
+
+
+class QuotationListResponse(BaseModel):
+    items: List[QuotationResponse]
+    total: int
+    page: int
+    limit: int
+
+
+class QuotationStatusUpdateRequest(BaseModel):
+    status: str = Field(..., pattern="^(draft|sent|cancelled)$")
+

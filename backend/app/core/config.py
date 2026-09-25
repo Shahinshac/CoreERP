@@ -1,5 +1,5 @@
 from typing import List, Union
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,10 +27,18 @@ class Settings(BaseSettings):
 
     # Auth & Secrets
     JWT_SECRET: str = "insecure-dev-secret-change-in-production"
+    AUTOMATION_KEY: str = "insecure-automation-secret-change-in-production"
+    RATE_LIMIT_ENABLED: bool = True
 
-    # Supabase Integration
+    # Supabase Integration (Legacy Storage Provider — dual-provider transition)
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
+
+    # Cloudinary Integration (Primary Server-side Storage Provider — never exposed to frontend)
+    CLOUDINARY_URL: str = ""
+    CLOUDINARY_CLOUD_NAME: str = ""
+    CLOUDINARY_API_KEY: str = ""
+    CLOUDINARY_API_SECRET: str = ""
 
     # Seller GST & Billing Configuration (Indian GST Statutory Defaults)
     SELLER_NAME: str = "My Retail Store Pvt Ltd"
@@ -43,6 +51,11 @@ class Settings(BaseSettings):
     SELLER_UPI_ID: str = "retailstore@upi"
     SELLER_UPI_NAME: str = "My Retail Store"
 
+    # Brevo Transactional Email Configuration (Free-tier HTTP API)
+    BREVO_API_KEY: str = ""
+    EMAIL_FROM: str = "no-reply@myretailstore.com"
+    EMAIL_FROM_NAME: str = "My Retail Store"
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
@@ -54,8 +67,20 @@ class Settings(BaseSettings):
                     return json.loads(v)
                 except Exception:
                     pass
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+        else:
+            origins = list(v)
+        # In credentialed CORS, wildcard '*' is forbidden by browsers and FastAPI CORSMiddleware
+        return [o for o in origins if o != "*"]
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.ENVIRONMENT.lower() == "production":
+            if "insecure" in self.JWT_SECRET.lower():
+                raise ValueError("JWT_SECRET must be set to a secure secret in production.")
+            if "insecure" in self.AUTOMATION_KEY.lower():
+                raise ValueError("AUTOMATION_KEY must be set to a secure secret in production.")
+        return self
 
 
 settings = Settings()

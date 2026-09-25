@@ -67,22 +67,22 @@ export const SalaryRecordsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
               Payroll & Salary Records
             </h1>
-            <Badge variant="outline" className="text-xs font-semibold text-emerald-600 border-emerald-200">
+            <Badge variant="outline" className="text-xs font-semibold text-emerald-400 border-emerald-500/40 bg-emerald-950/20">
               {totalCount} Records
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-zinc-400 mt-1">
             Browse snapshotted monthly salary runs, inspect itemized deduction breakdowns, and execute payouts.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Link to="/staff/staff-management">
-            <Button variant="outline" className="gap-1.5 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800">
-              <Users className="w-4 h-4" />
+            <Button variant="outline" className="gap-1.5 text-zinc-200 border-white/[0.16] hover:bg-[#18181C] hover:text-white">
+              <Users className="w-4 h-4 text-primary" />
               Staff Directory
             </Button>
           </Link>
@@ -90,7 +90,7 @@ export const SalaryRecordsPage: React.FC = () => {
           {isAdmin && (
             <Button
               onClick={() => setIsGenerateModalOpen(true)}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shadow-sm"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-none font-medium"
             >
               <PlusCircle className="w-4 h-4" />
               Generate Salary Run
@@ -100,9 +100,9 @@ export const SalaryRecordsPage: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-wrap gap-3 items-center justify-between">
+      <div className="p-4 bg-card border border-white/[0.14] rounded-xl shadow-none flex flex-wrap gap-3 items-center justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
             <Filter className="w-3.5 h-3.5" /> Filter Period:
           </div>
 
@@ -113,7 +113,7 @@ export const SalaryRecordsPage: React.FC = () => {
               setPeriodFilter(e.target.value)
               setPage(1)
             }}
-            className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-mono focus:outline-none"
+            className="h-9 px-3 text-xs bg-black/40 border border-white/[0.16] rounded-lg text-zinc-200 font-mono focus:outline-none focus:border-primary/60"
           />
 
           {periodFilter && (
@@ -124,7 +124,7 @@ export const SalaryRecordsPage: React.FC = () => {
                 setPeriodFilter("")
                 setPage(1)
               }}
-              className="h-9 text-xs text-slate-500"
+              className="h-9 text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.08]"
             >
               Clear Month
             </Button>
@@ -132,14 +132,14 @@ export const SalaryRecordsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 font-medium">Status:</span>
+          <span className="text-xs text-zinc-400 font-medium">Status:</span>
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value)
               setPage(1)
             }}
-            className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none"
+            className="h-9 px-3 text-xs bg-black/40 border border-white/[0.16] rounded-lg text-zinc-200 [&>option]:bg-[#0C0C0E] focus:outline-none focus:border-primary/60"
           >
             <option value="">All Statuses</option>
             <option value="generated">Generated (Unpaid)</option>
@@ -149,11 +149,11 @@ export const SalaryRecordsPage: React.FC = () => {
       </div>
 
       {/* Salary Records Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-white/[0.14] rounded-xl shadow-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <tr className="bg-white/[0.02] border-b border-white/[0.08] text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 <th className="py-3 px-4">Period</th>
                 <th className="py-3 px-4">Staff Member</th>
                 <th className="py-3 px-4">Emp Code</th>
@@ -164,16 +164,16 @@ export const SalaryRecordsPage: React.FC = () => {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-white/[0.08]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-zinc-400">
                     Loading salary records...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={8} className="py-12 text-center text-zinc-400">
                     No salary records found for the selected filter.
                   </td>
                 </tr>
@@ -181,31 +181,31 @@ export const SalaryRecordsPage: React.FC = () => {
                 records.map((r) => {
                   const isPaid = r.status === "paid"
                   return (
-                    <tr key={r.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-4 font-mono font-semibold text-slate-900 dark:text-slate-100">
+                    <tr key={r.id} className="hover:bg-white/[0.04] transition-colors">
+                      <td className="py-3 px-4 font-mono font-semibold text-zinc-100">
                         {r.period}
                       </td>
 
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-900 dark:text-slate-100">
+                        <div className="font-semibold text-zinc-100">
                           {r.staff_name || r.staff_email}
                         </div>
-                        <div className="text-xs text-slate-500">{r.staff_email}</div>
+                        <div className="text-xs text-zinc-400">{r.staff_email}</div>
                       </td>
 
-                      <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">
+                      <td className="py-3 px-4 font-mono text-xs text-zinc-300">
                         {r.employee_code || "—"}
                       </td>
 
-                      <td className="py-3 px-4 font-mono text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-4 font-mono text-zinc-200">
                         ₹{parseFloat(r.base_salary).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
 
-                      <td className="py-3 px-4 font-mono text-rose-600 dark:text-rose-400">
+                      <td className="py-3 px-4 font-mono text-rose-400">
                         -₹{parseFloat(r.total_deductions).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
 
-                      <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-3 px-4 font-mono font-bold text-emerald-400">
                         ₹{parseFloat(r.net_salary).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
 
@@ -213,8 +213,8 @@ export const SalaryRecordsPage: React.FC = () => {
                         <span
                           className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
                             isPaid
-                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                              ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/30"
+                              : "bg-amber-950/40 text-amber-400 border border-amber-500/30"
                           }`}
                         >
                           {isPaid ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
@@ -228,7 +228,7 @@ export const SalaryRecordsPage: React.FC = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => setSelectedRecordForDetail(r)}
-                            className="h-8 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 gap-1"
+                            className="h-8 text-xs text-zinc-300 hover:text-white hover:bg-white/[0.08] gap-1"
                           >
                             <Eye className="w-3.5 h-3.5" /> Details
                           </Button>
@@ -238,7 +238,7 @@ export const SalaryRecordsPage: React.FC = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => setSelectedRecordForPay(r)}
-                              className="h-8 text-xs text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 gap-1 font-medium"
+                              className="h-8 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 gap-1 font-medium"
                             >
                               <CheckCircle className="w-3.5 h-3.5" /> Pay
                             </Button>
@@ -255,7 +255,7 @@ export const SalaryRecordsPage: React.FC = () => {
 
         {/* Pagination */}
         {totalCount > limit && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+          <div className="p-4 border-t border-white/[0.08] flex items-center justify-between text-xs text-zinc-400">
             <div>
               Showing {(page - 1) * limit + 1} - {Math.min(page * limit, totalCount)} of {totalCount} records
             </div>
@@ -265,17 +265,17 @@ export const SalaryRecordsPage: React.FC = () => {
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
-                className="h-8 text-xs"
+                className="h-8 text-xs border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
               >
                 Previous
               </Button>
-              <span className="px-2">Page {page}</span>
+              <span className="px-2 text-zinc-300">Page {page}</span>
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page * limit >= totalCount}
                 onClick={() => setPage(page + 1)}
-                className="h-8 text-xs"
+                className="h-8 text-xs border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
               >
                 Next
               </Button>

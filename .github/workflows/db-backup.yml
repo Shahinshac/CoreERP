@@ -1,0 +1,61 @@
+name: Nightly Database Backup
+
+on:
+  schedule:
+    # Daily at 20:00 UTC (01:30 AM IST)
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Database Secret
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "::error::DATABASE_URL secret is not configured in repository secrets."
+            exit 1
+          fi
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Execute pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p backups
+          TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
+          DUMP_FILE="backups/erp_backup_${TIMESTAMP}.sql.gz"
+          
+          echo "Executing pg_dump for backup timestamp: ${TIMESTAMP}..."
+          pg_dump "${DATABASE_URL}" --no-owner --no-acl --clean --if-exists | gzip > "${DUMP_FILE}"
+
+          # Verify dump is not empty
+          FILE_SIZE=$(stat -c%s "${DUMP_FILE}")
+          echo "Backup created successfully: ${DUMP_FILE} (${FILE_SIZE} bytes)"
+          if [ "${FILE_SIZE}" -lt 100 ]; then
+            echo "::error::Backup file is suspiciously small or empty."
+            exit 1
+          fi
+
+      - name: Encrypt Backup Artifact
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE || secrets.AUTOMATION_KEY || 'default-erp-backup-encryption-key' }}
+        run: |
+          cd backups
+          for f in *.sql.gz; do
+            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 100000 \
+              -in "$f" -out "${f}.enc" \
+              -pass "pass:${BACKUP_PASSPHRASE}"
+            rm "$f"
+          done
+
+      - name: Upload Backup Artifact (30 Days Retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-db-backup
+          path: backups/*.enc
+          retention-days: 30

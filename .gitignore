@@ -9,6 +9,9 @@ __pycache__/
 *$py.class
 *.so
 .Python
+*.db
+*.sqlite3
+dev.db
 build/
 develop-eggs/
 dist/
@@ -34,6 +37,7 @@ ENV/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+.playwright-mcp/
 
 # Node & Frontend
 node_modules/

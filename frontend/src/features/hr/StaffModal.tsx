@@ -158,10 +158,10 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#0C0C0E] border-white/[0.14] text-[#F5F5F7]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <UserCheck className="w-5 h-5 text-indigo-600" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[#F5F5F7]">
+            <UserCheck className="w-5 h-5 text-primary" />
             {isEdit ? `Edit Staff: ${staffMember?.full_name || staffMember?.email}` : "Add New Staff Member"}
           </DialogTitle>
         </DialogHeader>
@@ -170,7 +170,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
           {/* Identity and Contact Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email Address *</Label>
+              <Label htmlFor="email" className="text-[#C4C4C8]">Email Address *</Label>
               <Input
                 id="email"
                 type="email"
@@ -184,7 +184,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
             {!isEdit && (
               <div className="space-y-1.5">
-                <Label htmlFor="password">Initial Password *</Label>
+                <Label htmlFor="password" className="text-[#C4C4C8]">Initial Password *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -197,7 +197,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName" className="text-[#C4C4C8]">Full Name</Label>
               <Input
                 id="fullName"
                 value={fullName}
@@ -207,7 +207,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone" className="text-[#C4C4C8]">Phone Number</Label>
               <Input
                 id="phone"
                 value={phone}
@@ -217,7 +217,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="employeeCode">Employee Code</Label>
+              <Label htmlFor="employeeCode" className="text-[#C4C4C8]">Employee Code</Label>
               <Input
                 id="employeeCode"
                 disabled={!isAdmin && isEdit}
@@ -228,7 +228,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="joiningDate">Joining Date</Label>
+              <Label htmlFor="joiningDate" className="text-[#C4C4C8]">Joining Date</Label>
               <Input
                 id="joiningDate"
                 type="date"
@@ -239,10 +239,10 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
             {isAdmin && (
               <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="role">System Role (RBAC)</Label>
+                <Label htmlFor="role" className="text-[#C4C4C8]">System Role (RBAC)</Label>
                 <select
                   id="role"
-                  className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full h-10 px-3 py-2 text-sm bg-[#0A0A0C] border border-white/[0.16] rounded-md text-[#F5F5F7] focus:outline-none focus:ring-1 focus:ring-primary"
                   value={role}
                   onChange={(e) => setRole(e.target.value as StaffRole)}
                 >
@@ -258,21 +258,21 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
           {/* Salary Configuration (Admin Only) */}
           {isAdmin ? (
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-4">
+            <div className="p-4 bg-[#0A0A0C] border border-white/[0.14] rounded-xl space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-emerald-600" />
-                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                  <DollarSign className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-semibold text-[#F5F5F7]">
                     Salary & Payroll Configuration
                   </h3>
                 </div>
-                <span className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-xs bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Shield className="w-3 h-3" /> Admin Restricted
                 </span>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="baseSalary">Monthly Base Salary (₹) *</Label>
+                <Label htmlFor="baseSalary" className="text-[#C4C4C8]">Monthly Base Salary (₹) *</Label>
                 <Input
                   id="baseSalary"
                   type="number"
@@ -288,7 +288,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
               {/* Deductions Configurator */}
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  <Label className="text-sm font-medium text-[#C4C4C8]">
                     Applicable Deductions (Itemized)
                   </Label>
                   <Button
@@ -296,14 +296,14 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                     variant="outline"
                     size="sm"
                     onClick={handleAddDeduction}
-                    className="h-8 text-xs gap-1 text-indigo-600 dark:text-indigo-400 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
+                    className="h-8 text-xs gap-1 text-primary border-primary/30 hover:bg-primary/10"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Deduction
                   </Button>
                 </div>
 
                 {deductions.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic">
+                  <p className="text-xs text-[#94949C] italic">
                     No deductions configured. Staff will receive full base salary as net pay.
                   </p>
                 ) : (
@@ -311,7 +311,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                     {deductions.map((d, index) => (
                       <div
                         key={index}
-                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm"
+                        className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-2 bg-[#121214] border border-white/[0.14] rounded-lg text-sm"
                       >
                         <Input
                           placeholder="Deduction Name (e.g. PF)"
@@ -323,7 +323,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                         <select
                           value={d.type}
                           onChange={(e) => handleDeductionChange(index, "type", e.target.value)}
-                          className="h-8 px-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded"
+                          className="h-8 px-2 text-xs bg-[#0A0A0C] border border-white/[0.16] text-[#F5F5F7] rounded focus:outline-none focus:ring-1 focus:ring-primary"
                         >
                           <option value="percentage">Percentage (%)</option>
                           <option value="fixed">Fixed Amount (₹)</option>
@@ -343,7 +343,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                           variant="ghost"
                           size="icon"
                           onClick={() => handleRemoveDeduction(index)}
-                          className="h-8 w-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/50"
+                          className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
@@ -353,16 +353,16 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                 )}
 
                 {/* Live Estimated Net Salary Summary */}
-                <div className="mt-3 p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 rounded-lg flex items-center justify-between text-xs sm:text-sm">
+                <div className="mt-3 p-3 bg-primary/10 border border-primary/20 rounded-lg flex items-center justify-between text-xs sm:text-sm">
                   <div>
-                    <span className="text-slate-600 dark:text-slate-400">Est. Total Deductions: </span>
-                    <span className="font-semibold text-rose-600 dark:text-rose-400">
+                    <span className="text-[#94949C]">Est. Total Deductions: </span>
+                    <span className="font-semibold text-rose-400">
                       -₹{estimatedTotalDeductions.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-600 dark:text-slate-400">Est. Net Take-Home: </span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                    <span className="text-[#94949C]">Est. Net Take-Home: </span>
+                    <span className="font-bold text-emerald-400 text-base">
                       ₹{estimatedNet.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -370,7 +370,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
               </div>
             </div>
           ) : (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-300 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>Salary and deduction configurations are strictly restricted to Administrators.</span>
             </div>
@@ -388,7 +388,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-white font-medium"
             >
               {isSubmitting ? "Saving..." : isEdit ? "Update Staff" : "Create Staff"}
             </Button>

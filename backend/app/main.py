@@ -22,11 +22,42 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutting down...")
 
 
+class SecurityHeadersMiddleware:
+    """ASGI middleware injecting standard security headers into all HTTP responses."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                header_names = {h[0].lower() for h in headers}
+                if b"x-content-type-options" not in header_names:
+                    headers.append((b"x-content-type-options", b"nosniff"))
+                if b"x-frame-options" not in header_names:
+                    headers.append((b"x-frame-options", b"DENY"))
+                if b"referrer-policy" not in header_names:
+                    headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
+                if b"permissions-policy" not in header_names:
+                    headers.append((b"permissions-policy", b"geolocation=(), camera=(), microphone=()"))
+                message["headers"] = headers
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
         lifespan=lifespan,
     )
+
+    # Security Headers Middleware
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # CORS Configuration from settings
     app.add_middleware(
@@ -63,9 +94,8 @@ def create_app() -> FastAPI:
                 content={"status": "unhealthy", "database": "unreachable"},
             )
 
-    # Register routers
     from app.modules.auth.customer_routes import staff_customer_router
-    from app.modules.auth.routes import customer_auth_router, staff_auth_router
+    from app.modules.auth.routes import customer_auth_router, staff_auth_router, staff_sessions_router
     from app.modules.catalog.routes import catalog_router
     from app.modules.inventory.routes import inventory_router
     from app.modules.invoicing.routes import router as invoicing_router
@@ -73,19 +103,38 @@ def create_app() -> FastAPI:
     from app.modules.emi.routes import emi_router
     from app.modules.hr.routes import hr_router
     from app.modules.finance.routes import finance_router
+    from app.modules.reports.routes import reports_router
     from app.modules.sales.routes import pos_router
+    from app.modules.sales.cash_drawer_routes import cash_drawer_router
+    from app.modules.portal.routes import portal_router
+    from app.modules.support.routes import support_router
+    from app.modules.notifications.routes import notifications_router
+    from app.modules.automation.routes import automation_router
+    from app.modules.audit.routes import audit_router
+    from app.modules.search.routes import search_router
+    from app.modules.reports.dashboard_routes import dashboard_router
 
     app.include_router(staff_auth_router)
+    app.include_router(staff_sessions_router)
     app.include_router(customer_auth_router)
     app.include_router(staff_customer_router)
     app.include_router(catalog_router)
     app.include_router(inventory_router)
     app.include_router(pos_router)
+    app.include_router(cash_drawer_router)
     app.include_router(invoicing_router)
     app.include_router(payments_router)
     app.include_router(emi_router, prefix="/api/emi")
     app.include_router(hr_router, prefix="/api/hr")
     app.include_router(finance_router, prefix="/api/finance")
+    app.include_router(reports_router)
+    app.include_router(dashboard_router)
+    app.include_router(portal_router)
+    app.include_router(support_router)
+    app.include_router(notifications_router)
+    app.include_router(automation_router)
+    app.include_router(audit_router)
+    app.include_router(search_router)
 
     return app
 

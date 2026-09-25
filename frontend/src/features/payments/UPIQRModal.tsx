@@ -59,23 +59,23 @@ export const UPIQRModal: React.FC<UPIQRModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <div className="space-y-4 max-w-sm mx-auto text-center">
         <DialogHeader>
-          <div className="flex items-center justify-center gap-2 text-purple-600">
+          <div className="flex items-center justify-center gap-2 text-primary">
             <QrCode className="h-6 w-6" />
-            <DialogTitle className="text-xl">Scan to Pay via UPI</DialogTitle>
+            <DialogTitle className="text-xl text-zinc-100">Scan to Pay via UPI</DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-slate-500">
+          <DialogDescription className="text-xs text-zinc-400">
             Zero-cost static UPI QR. Customer can scan with GPay, PhonePe, Paytm, or BHIM.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="py-16 text-center text-sm text-slate-400">
+          <div className="py-16 text-center text-sm text-zinc-400">
             Generating UPI Intent QR...
           </div>
         ) : upiData && qrCodeUrl ? (
           <div className="space-y-4">
-            {/* QR Card */}
-            <div className="p-4 bg-white rounded-2xl border-2 border-purple-200 shadow-sm inline-block">
+            {/* QR Card (Keep white background for camera scanner contrast) */}
+            <div className="p-4 bg-white rounded-2xl border-2 border-white/20 shadow-none inline-block">
               <img
                 src={qrCodeUrl}
                 alt="UPI Payment QR Code"
@@ -84,18 +84,18 @@ export const UPIQRModal: React.FC<UPIQRModalProps> = ({
             </div>
 
             {/* Payment Details */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1 font-mono">
+            <div className="bg-[#0A0A0C] p-3 rounded-xl border border-white/[0.14] text-xs space-y-1 font-mono">
               <div className="flex justify-between">
-                <span className="text-slate-500 font-sans">Payee UPI ID:</span>
-                <span className="font-semibold text-slate-800">{upiData.seller_upi_id}</span>
+                <span className="text-zinc-400 font-sans">Payee UPI ID:</span>
+                <span className="font-semibold text-zinc-100">{upiData.seller_upi_id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500 font-sans">Payee Name:</span>
-                <span className="text-slate-700">{upiData.seller_name}</span>
+                <span className="text-zinc-400 font-sans">Payee Name:</span>
+                <span className="text-zinc-300">{upiData.seller_name}</span>
               </div>
-              <div className="flex justify-between border-t border-slate-200 pt-1 text-sm">
-                <span className="text-slate-600 font-sans font-medium">Payable Amount:</span>
-                <span className="font-black text-purple-700">₹{parseFloat(upiData.amount).toFixed(2)}</span>
+              <div className="flex justify-between border-t border-white/[0.10] pt-1 text-sm">
+                <span className="text-zinc-300 font-sans font-medium">Payable Amount:</span>
+                <span className="font-black text-primary">₹{parseFloat(upiData.amount).toFixed(2)}</span>
               </div>
             </div>
 
@@ -106,21 +106,21 @@ export const UPIQRModal: React.FC<UPIQRModalProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyUpi}
-                className="flex-1 h-8 text-xs gap-1.5"
+                className="flex-1 h-8 text-xs gap-1.5 border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
               >
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-zinc-400" />}
                 {copied ? "Copied Link" : "Copy UPI Link"}
               </Button>
             </div>
           </div>
         ) : (
-          <div className="py-10 text-center text-xs text-rose-500">
+          <div className="py-10 text-center text-xs text-rose-400">
             Unable to load UPI payment details.
           </div>
         )}
 
-        <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-100">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-white/[0.08]">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="border-white/[0.16] text-zinc-300 hover:bg-[#18181C]">
             Close
           </Button>
           <Button
@@ -129,7 +129,7 @@ export const UPIQRModal: React.FC<UPIQRModalProps> = ({
               onOpenChange(false)
               onRecordPayment()
             }}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
           >
             Mark as Received & Record
           </Button>

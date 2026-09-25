@@ -129,17 +129,17 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <DialogHeader>
-          <DialogTitle>Stock Operation: {product.name}</DialogTitle>
-          <DialogDescription>
-            SKU: <span className="font-mono font-medium text-slate-800">{product.sku}</span> • Current Stock:{" "}
-            <span className="font-semibold text-slate-900">
+          <DialogTitle className="text-[#F5F5F7]">Stock Operation: {product.name}</DialogTitle>
+          <DialogDescription className="text-[#94949C]">
+            SKU: <span className="font-mono font-medium text-[#C4C4C8]">{product.sku}</span> • Current Stock:{" "}
+            <span className="font-semibold text-[#F5F5F7]">
               {product.current_stock} {product.unit}
             </span>
           </DialogDescription>
         </DialogHeader>
 
         {/* Operation Type Switcher */}
-        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-lg">
+        <div className="grid grid-cols-3 gap-2 p-1 bg-[#0A0A0C] border border-white/[0.14] rounded-lg">
           <button
             type="button"
             onClick={() => {
@@ -149,11 +149,11 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
             }}
             className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-md transition ${
               operationType === "in"
-                ? "bg-white text-emerald-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-[#18181C] text-emerald-400 border border-emerald-500/30 shadow-sm"
+                : "text-[#94949C] hover:text-[#F5F5F7]"
             }`}
           >
-            <ArrowUpCircle className="h-4 w-4 text-emerald-600" />
+            <ArrowUpCircle className="h-4 w-4 text-emerald-400" />
             Stock In
           </button>
           <button
@@ -165,11 +165,11 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
             }}
             className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-md transition ${
               operationType === "out"
-                ? "bg-white text-rose-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-[#18181C] text-rose-400 border border-rose-500/30 shadow-sm"
+                : "text-[#94949C] hover:text-[#F5F5F7]"
             }`}
           >
-            <ArrowDownCircle className="h-4 w-4 text-rose-600" />
+            <ArrowDownCircle className="h-4 w-4 text-rose-400" />
             Stock Out
           </button>
           <button
@@ -181,18 +181,18 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
             }}
             className={`flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-md transition ${
               operationType === "adjustment"
-                ? "bg-white text-amber-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-[#18181C] text-amber-400 border border-amber-500/30 shadow-sm"
+                : "text-[#94949C] hover:text-[#F5F5F7]"
             }`}
           >
-            <RefreshCw className="h-4 w-4 text-amber-600" />
+            <RefreshCw className="h-4 w-4 text-amber-400" />
             Adjustment
           </button>
         </div>
 
         {/* Quantity Field */}
         <div className="space-y-1">
-          <div className="flex justify-between items-center text-xs font-medium text-slate-700">
+          <div className="flex justify-between items-center text-xs font-medium text-[#C4C4C8]">
             <span>
               {operationType === "in"
                 ? "Quantity to Receive *"
@@ -202,7 +202,7 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
             </span>
             <span
               className={`font-mono ${
-                wouldBeNegative ? "text-rose-600 font-bold" : "text-slate-600"
+                wouldBeNegative ? "text-rose-400 font-bold" : "text-[#94949C]"
               }`}
             >
               Resulting: {projectedStock.toFixed(3)} {product.unit}
@@ -219,7 +219,7 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
             autoFocus
           />
           {operationType === "adjustment" && (
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-[#94949C]">
               Enter a positive number to increase stock or negative (e.g. -10) to reduce.
             </p>
           )}
@@ -227,28 +227,28 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
 
         {/* Negative Stock Warning and Admin Override Checkbox */}
         {wouldBeNegative && operationType === "adjustment" && (
-          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-            <div className="flex items-start gap-2 text-xs text-amber-800">
-              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-2">
+            <div className="flex items-start gap-2 text-xs text-amber-300">
+              <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
               <span>
                 Warning: Resulting stock will be negative (
-                <strong className="font-mono">{projectedStock.toFixed(3)}</strong>). This is prohibited
+                <strong className="font-mono text-amber-200">{projectedStock.toFixed(3)}</strong>). This is prohibited
                 unless authorized under an Administrator adjustment override.
               </span>
             </div>
             {isAdmin ? (
-              <label className="flex items-center gap-2 text-xs font-medium text-amber-900 cursor-pointer pt-1">
+              <label className="flex items-center gap-2 text-xs font-medium text-amber-200 cursor-pointer pt-1">
                 <input
                   type="checkbox"
                   checked={isOverride}
                   onChange={(e) => setIsOverride(e.target.checked)}
-                  className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4"
+                  className="rounded border-amber-500/40 bg-[#0C0C0E] text-primary focus:ring-primary h-4 w-4"
                 />
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-700" />
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
                 <span>Authorize Admin negative stock override</span>
               </label>
             ) : (
-              <p className="text-xs text-rose-600 font-medium">
+              <p className="text-xs text-rose-400 font-medium">
                 Admin role required to authorize negative stock override.
               </p>
             )}
@@ -258,7 +258,7 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
         {/* Reference & Reason */}
         <div className="space-y-3 text-sm">
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Reference / Doc No.</label>
+            <label className="font-medium text-[#C4C4C8]">Reference / Doc No.</label>
             <Input
               value={reference}
               onChange={(e) => setReference(e.target.value)}
@@ -267,7 +267,7 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Reason / Notes</label>
+            <label className="font-medium text-[#C4C4C8]">Reason / Notes</label>
             <Input
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -294,10 +294,10 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
             }
             className={
               operationType === "in"
-                ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                ? "bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
                 : operationType === "out"
-                ? "bg-rose-600 hover:bg-rose-700 text-white"
-                : "bg-amber-600 hover:bg-amber-700 text-white"
+                ? "bg-rose-600 hover:bg-rose-500 text-white font-medium"
+                : "bg-amber-600 hover:bg-amber-500 text-white font-medium"
             }
           >
             {isSubmitting

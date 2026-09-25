@@ -49,4 +49,20 @@ export const customersApi = {
     apiClient.post<Customer>("/api/staff/customers", data),
   updateCustomer: (id: string, data: CustomerUpdatePayload) =>
     apiClient.put<Customer>(`/api/staff/customers/${id}`, data),
+  previewImport: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return apiClient.upload<import("../catalog/api").ImportPreviewResponse>(
+      "/api/staff/customers/import/preview",
+      formData
+    )
+  },
+  confirmImport: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return apiClient.upload<import("../catalog/api").ImportConfirmResponse>(
+      "/api/staff/customers/import/confirm",
+      formData
+    )
+  },
 }

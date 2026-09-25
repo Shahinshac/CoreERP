@@ -1,4 +1,5 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
@@ -73,9 +74,17 @@ export const ExpensesPage: React.FC = () => {
   const limit = 15
 
   // Modal states
+  const [searchParams] = useSearchParams()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (searchParams.get("action") === "new" && canManage) {
+      setEditingExpense(null)
+      setIsModalOpen(true)
+    }
+  }, [searchParams, canManage])
 
   // 1. Fetch Financial Summary for selected period
   const {
@@ -200,27 +209,27 @@ export const ExpensesPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Top Header & Period Selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card border border-white/[0.14] rounded-xl p-6 shadow-none">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Building className="w-6 h-6 text-indigo-600" />
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100 flex items-center gap-2">
+              <Building className="w-6 h-6 text-primary" />
               Financial Management & Expenses
             </h1>
-            <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200">
+            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
               Phase 11
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-zinc-400 mt-1">
             Real-time P&L analytics, cash revenue recognition, receivables, and operational expenses ledger.
           </p>
         </div>
 
         {/* Period Picker & Action Buttons */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-            <Calendar className="w-4 h-4 text-slate-500" />
-            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Period:</span>
+          <div className="flex items-center gap-2 bg-[#0A0A0C] px-3 py-1.5 rounded-lg border border-white/[0.16]">
+            <Calendar className="w-4 h-4 text-zinc-400" />
+            <span className="text-xs font-medium text-zinc-300">Period:</span>
             <input
               type="month"
               value={selectedPeriod}
@@ -230,7 +239,7 @@ export const ExpensesPage: React.FC = () => {
                   setPage(1)
                 }
               }}
-              className="bg-transparent text-sm font-semibold focus:outline-none text-slate-900 dark:text-slate-100 cursor-pointer"
+              className="bg-transparent text-sm font-semibold focus:outline-none text-zinc-100 cursor-pointer"
             />
           </div>
 
@@ -242,7 +251,7 @@ export const ExpensesPage: React.FC = () => {
               refetchExpenses()
             }}
             disabled={isSummaryLoading || isSummaryRefetching}
-            className="gap-1.5"
+            className="gap-1.5 border-white/[0.16] text-zinc-300 hover:text-white hover:bg-[#18181C]"
           >
             <RefreshCw className={`w-4 h-4 ${isSummaryRefetching ? "animate-spin" : ""}`} />
             Refresh
@@ -252,7 +261,7 @@ export const ExpensesPage: React.FC = () => {
             <Button
               size="sm"
               onClick={handleOpenCreate}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5"
+              className="bg-primary hover:bg-blue-500 text-white gap-1.5 font-medium shadow-none"
             >
               <Plus className="w-4 h-4" />
               Record Expense
@@ -264,45 +273,45 @@ export const ExpensesPage: React.FC = () => {
       {/* Live Financial KPI Dashboard Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Cash Revenue */}
-        <Card className="border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/10">
+        <Card className="border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-xs font-semibold text-emerald-400 uppercase tracking-wider">
               <span>Cash Revenue</span>
-              <DollarSign className="w-4 h-4 text-emerald-600" />
+              <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            <CardTitle className="text-2xl font-bold text-zinc-100">
               {isSummaryLoading ? "..." : fmtMoney(summary?.revenue)}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-zinc-400">
               Cash basis receipts received in {selectedPeriod}
             </p>
-            <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5">
+            <div className="mt-2 text-[11px] text-zinc-400 flex items-center justify-between border-t border-white/[0.08] pt-1.5">
               <span>Invoiced (Accrual):</span>
-              <span className="font-semibold">{fmtMoney(summary?.invoiced_revenue)}</span>
+              <span className="font-semibold text-zinc-200">{fmtMoney(summary?.invoiced_revenue)}</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Cost of Goods Sold */}
-        <Card className="border-amber-200 dark:border-amber-900/50 bg-amber-50/20 dark:bg-amber-950/10">
+        <Card className="border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-amber-800 dark:text-amber-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-xs font-semibold text-amber-400 uppercase tracking-wider">
               <span>Cost of Goods (COGS)</span>
-              <ShoppingBag className="w-4 h-4 text-amber-600" />
+              <ShoppingBag className="w-4 h-4 text-amber-400" />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            <CardTitle className="text-2xl font-bold text-zinc-100">
               {isSummaryLoading ? "..." : fmtMoney(summary?.cost_of_goods)}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-zinc-400">
               Supplier purchases & stock inventory intake
             </p>
-            <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5">
+            <div className="mt-2 text-[11px] text-zinc-400 flex items-center justify-between border-t border-white/[0.08] pt-1.5">
               <span>Gross Profit:</span>
-              <span className={`font-semibold ${isGrossProfitPositive ? "text-blue-600" : "text-rose-600"}`}>
+              <span className={`font-semibold ${isGrossProfitPositive ? "text-primary" : "text-rose-400"}`}>
                 {fmtMoney(summary?.gross_profit)}
               </span>
             </div>
@@ -310,23 +319,23 @@ export const ExpensesPage: React.FC = () => {
         </Card>
 
         {/* Total Expenses */}
-        <Card className="border-rose-200 dark:border-rose-900/50 bg-rose-50/20 dark:bg-rose-950/10">
+        <Card className="border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-rose-800 dark:text-rose-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-xs font-semibold text-rose-400 uppercase tracking-wider">
               <span>Total Expenses</span>
-              <Receipt className="w-4 h-4 text-rose-600" />
+              <Receipt className="w-4 h-4 text-rose-400" />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            <CardTitle className="text-2xl font-bold text-zinc-100">
               {isSummaryLoading ? "..." : fmtMoney(summary?.expenses)}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-zinc-400">
               Operating costs + Phase 10 payroll sync
             </p>
-            <div className="mt-2 text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-1.5">
+            <div className="mt-2 text-[11px] text-zinc-400 flex items-center justify-between border-t border-white/[0.08] pt-1.5">
               <span>Net Profit:</span>
-              <span className={`font-bold ${isNetProfitPositive ? "text-emerald-600" : "text-rose-600"}`}>
+              <span className={`font-bold ${isNetProfitPositive ? "text-emerald-400" : "text-rose-400"}`}>
                 {fmtMoney(summary?.net_profit)}
               </span>
             </div>
@@ -334,27 +343,27 @@ export const ExpensesPage: React.FC = () => {
         </Card>
 
         {/* Total Receivables (Invoice + EMI) */}
-        <Card className="border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/20 dark:bg-indigo-950/10">
+        <Card className="border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-indigo-800 dark:text-indigo-400 uppercase tracking-wider">
+            <div className="flex items-center justify-between text-xs font-semibold text-primary uppercase tracking-wider">
               <span>Total Receivables</span>
-              <CreditCard className="w-4 h-4 text-indigo-600" />
+              <CreditCard className="w-4 h-4 text-primary" />
             </div>
-            <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+            <CardTitle className="text-2xl font-bold text-zinc-100">
               {isSummaryLoading ? "..." : fmtMoney(summary?.total_receivables)}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="space-y-1 text-[11px] text-slate-600 dark:text-slate-400">
+            <div className="space-y-1 text-[11px] text-zinc-400">
               <div className="flex items-center justify-between">
                 <span>Invoices Unpaid:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="font-semibold text-zinc-200">
                   {fmtMoney(summary?.outstanding_receivables)}
                 </span>
               </div>
-              <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800 pt-1">
+              <div className="flex items-center justify-between border-t border-white/[0.08] pt-1">
                 <span>EMI Dues Remaining:</span>
-                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                <span className="font-semibold text-primary">
                   {fmtMoney(summary?.emi_receivables)}
                 </span>
               </div>
@@ -366,28 +375,28 @@ export const ExpensesPage: React.FC = () => {
       {/* Visual Analytics Row: P&L Structure & Expense Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* P&L Components Comparison Bar Chart */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-indigo-600" />
+              <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-100">
+                <BarChart3 className="w-4 h-4 text-primary" />
                 Period P&L Structure ({selectedPeriod})
               </CardTitle>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Side-by-side financial breakdown using strict Decimal money accounting
               </p>
             </div>
-            <Badge variant="secondary" className="text-[11px]">
+            <Badge variant="secondary" className="text-[11px] bg-white/[0.06] text-zinc-300 border-white/[0.10]">
               {summary?.accounting_basis}
             </Badge>
           </CardHeader>
           <CardContent>
             {isSummaryLoading ? (
-              <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+              <div className="h-64 flex items-center justify-center text-zinc-400 text-sm">
                 Loading financial metrics...
               </div>
             ) : pnlComparisonData.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-slate-400 text-sm">
+              <div className="h-64 flex items-center justify-center text-zinc-400 text-sm">
                 No activity recorded for {selectedPeriod}
               </div>
             ) : (
@@ -396,7 +405,7 @@ export const ExpensesPage: React.FC = () => {
                   <BarChart data={pnlComparisonData} margin={{ top: 15, right: 20, left: 10, bottom: 25 }}>
                     <XAxis
                       dataKey="name"
-                      stroke="#888888"
+                      stroke="#94949C"
                       fontSize={11}
                       tickLine={false}
                       interval={0}
@@ -404,7 +413,7 @@ export const ExpensesPage: React.FC = () => {
                       textAnchor="end"
                     />
                     <YAxis
-                      stroke="#888888"
+                      stroke="#94949C"
                       fontSize={11}
                       tickLine={false}
                       tickFormatter={(val) => `₹${val}`}
@@ -414,7 +423,7 @@ export const ExpensesPage: React.FC = () => {
                         `₹${(typeof val === "number" ? val : 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
                         "Amount",
                       ]}
-                      contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", color: "#f8fafc", borderRadius: "8px" }}
+                      contentStyle={{ backgroundColor: "#0C0C0E", borderColor: "rgba(255,255,255,0.14)", color: "#F5F5F7", borderRadius: "8px" }}
                     />
                     <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
                       {pnlComparisonData.map((entry, index) => (
@@ -429,20 +438,20 @@ export const ExpensesPage: React.FC = () => {
         </Card>
 
         {/* Expense Category Breakdown Chart */}
-        <Card>
+        <Card className="border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4 text-rose-600" />
+            <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-100">
+              <PieChartIcon className="w-4 h-4 text-primary" />
               Expense Breakdown
             </CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-zinc-400 mt-0.5">
               Categorical distribution of operational expenditures
             </p>
           </CardHeader>
           <CardContent>
             {categoryBreakdownData.length === 0 ? (
-              <div className="h-64 flex flex-col items-center justify-center text-slate-400 text-sm">
-                <Receipt className="w-8 h-8 stroke-1 text-slate-300 mb-2" />
+              <div className="h-64 flex flex-col items-center justify-center text-zinc-400 text-sm">
+                <Receipt className="w-8 h-8 stroke-1 text-zinc-500 mb-2" />
                 <span>No expenses in {selectedPeriod}</span>
               </div>
             ) : (
@@ -469,7 +478,7 @@ export const ExpensesPage: React.FC = () => {
                           `₹${(typeof val === "number" ? val : 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
                           "Amount",
                         ]}
-                        contentStyle={{ backgroundColor: "#1e293b", borderColor: "#334155", color: "#f8fafc", borderRadius: "8px" }}
+                        contentStyle={{ backgroundColor: "#0C0C0E", borderColor: "rgba(255,255,255,0.14)", color: "#F5F5F7", borderRadius: "8px" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -484,11 +493,11 @@ export const ExpensesPage: React.FC = () => {
                           className="w-2.5 h-2.5 rounded-full"
                           style={{ backgroundColor: item.color }}
                         />
-                        <span className="text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
+                        <span className="text-zinc-300 truncate max-w-[120px]">
                           {item.name}
                         </span>
                       </div>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                      <span className="font-semibold text-zinc-100 font-mono">
                         {fmtMoney(item.value)}
                       </span>
                     </div>
@@ -501,15 +510,15 @@ export const ExpensesPage: React.FC = () => {
       </div>
 
       {/* Expense Ledger Table */}
-      <Card>
+      <Card className="border-white/[0.14] bg-card shadow-none">
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-indigo-600" />
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-zinc-100">
+                <Receipt className="w-5 h-5 text-primary" />
                 Expenses Ledger
               </CardTitle>
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Detailed record of all operating overheads, including automated Phase 10 payroll syncs.
               </p>
             </div>
@@ -517,7 +526,7 @@ export const ExpensesPage: React.FC = () => {
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
               <select
-                className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-none"
+                className="h-9 px-3 text-xs bg-[#0A0A0C] border border-white/[0.16] text-zinc-200 [&>option]:bg-[#0C0C0E] rounded-md focus:outline-none focus:border-primary/60"
                 value={categoryFilter}
                 onChange={(e) => {
                   setCategoryFilter(e.target.value)
@@ -535,7 +544,7 @@ export const ExpensesPage: React.FC = () => {
               </select>
 
               <select
-                className="h-9 px-3 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md focus:outline-none"
+                className="h-9 px-3 text-xs bg-[#0A0A0C] border border-white/[0.16] text-zinc-200 [&>option]:bg-[#0C0C0E] rounded-md focus:outline-none focus:border-primary/60"
                 value={sourceFilter}
                 onChange={(e) => {
                   setSourceFilter(e.target.value)
@@ -554,7 +563,7 @@ export const ExpensesPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm border-collapse">
               <thead>
-                <tr className="border-b border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-xs">
+                <tr className="border-b border-t border-white/[0.08] bg-white/[0.02] text-zinc-400 text-xs">
                   <th className="py-3 px-4 font-semibold">Date</th>
                   <th className="py-3 px-4 font-semibold">Category</th>
                   <th className="py-3 px-4 font-semibold">Description</th>
@@ -563,16 +572,16 @@ export const ExpensesPage: React.FC = () => {
                   <th className="py-3 px-4 font-semibold text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-white/[0.08]">
                 {isExpensesLoading ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-zinc-400">
                       Loading expenses...
                     </td>
                   </tr>
                 ) : !expensesData || expensesData.items.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <td colSpan={6} className="py-12 text-center text-zinc-400">
                       No expenses found for the selected filters.
                     </td>
                   </tr>
@@ -582,51 +591,51 @@ export const ExpensesPage: React.FC = () => {
                     return (
                       <tr
                         key={exp.id}
-                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                        className="hover:bg-white/[0.04] transition-colors"
                       >
-                        <td className="py-3 px-4 whitespace-nowrap text-slate-900 dark:text-slate-100 font-medium">
+                        <td className="py-3 px-4 whitespace-nowrap text-zinc-100 font-medium">
                           {exp.date}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           <span
                             className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                             style={{
-                              backgroundColor: `${CATEGORY_COLORS[exp.category] || "#64748b"}20`,
+                              backgroundColor: `${CATEGORY_COLORS[exp.category] || "#64748b"}25`,
                               color: CATEGORY_COLORS[exp.category] || "#64748b",
                             }}
                           >
                             {CATEGORY_LABELS[exp.category] || exp.category}
                           </span>
                         </td>
-                        <td className="py-3 px-4 max-w-xs truncate text-slate-600 dark:text-slate-300">
+                        <td className="py-3 px-4 max-w-xs truncate text-zinc-300">
                           {exp.description || "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {isSystem ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-900">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-950/40 text-amber-400 border border-amber-500/30">
                                 <Lock className="w-3 h-3" />
                                 System Payroll
                               </span>
                               {exp.reference_id && (
-                                <span className="text-[10px] text-slate-400 font-mono" title={`SalaryRecord ID: ${exp.reference_id}`}>
+                                <span className="text-[10px] text-zinc-500 font-mono" title={`SalaryRecord ID: ${exp.reference_id}`}>
                                   ref:{exp.reference_id.slice(0, 8)}...
                                 </span>
                               )}
                             </div>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-white/[0.04] text-zinc-300 border border-white/[0.10]">
                               Manual
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap text-right font-semibold text-slate-900 dark:text-slate-100">
+                        <td className="py-3 px-4 whitespace-nowrap text-right font-semibold text-zinc-100 font-mono">
                           {fmtMoney(exp.amount)}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap text-center">
                           {isSystem ? (
                             <span
-                              className="text-xs text-slate-400 italic flex items-center justify-center gap-1"
+                              className="text-xs text-zinc-500 italic flex items-center justify-center gap-1"
                               title="Immutable: Synchronized from Phase 10 payroll"
                             >
                               <Lock className="w-3 h-3" /> Immutable
@@ -636,7 +645,7 @@ export const ExpensesPage: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-slate-500 hover:text-indigo-600"
+                                className="h-7 w-7 text-zinc-400 hover:text-white hover:bg-white/[0.08]"
                                 onClick={() => handleOpenEdit(exp)}
                                 title="Edit Expense"
                               >
@@ -645,7 +654,7 @@ export const ExpensesPage: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 text-slate-500 hover:text-rose-600"
+                                className="h-7 w-7 text-zinc-400 hover:text-rose-400 hover:bg-rose-950/30"
                                 onClick={() => handleDelete(exp)}
                                 title="Delete Expense (Audit Safe)"
                               >
@@ -653,7 +662,7 @@ export const ExpensesPage: React.FC = () => {
                               </Button>
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-400">—</span>
+                            <span className="text-xs text-zinc-500">—</span>
                           )}
                         </td>
                       </tr>
@@ -666,7 +675,7 @@ export const ExpensesPage: React.FC = () => {
 
           {/* Pagination */}
           {expensesData && expensesData.total > limit && (
-            <div className="flex items-center justify-between p-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
+            <div className="flex items-center justify-between p-4 border-t border-white/[0.08] text-xs text-zinc-400">
               <span>
                 Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, expensesData.total)} of {expensesData.total} expenses
               </span>
@@ -676,7 +685,7 @@ export const ExpensesPage: React.FC = () => {
                   size="sm"
                   disabled={page <= 1}
                   onClick={() => setPage(page - 1)}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
                 >
                   Previous
                 </Button>
@@ -685,7 +694,7 @@ export const ExpensesPage: React.FC = () => {
                   size="sm"
                   disabled={page * limit >= expensesData.total}
                   onClick={() => setPage(page + 1)}
-                  className="h-8 text-xs"
+                  className="h-8 text-xs border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
                 >
                   Next
                 </Button>
@@ -697,15 +706,15 @@ export const ExpensesPage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 max-w-sm w-full space-y-4 shadow-xl">
-            <div className="flex items-center gap-3 text-rose-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0C0C0E] border border-white/[0.14] rounded-xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-rose-400">
               <AlertCircle className="w-6 h-6" />
-              <h3 className="font-bold text-base text-slate-900 dark:text-slate-100">
+              <h3 className="font-bold text-base text-zinc-100">
                 Confirm Soft Delete
               </h3>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-zinc-400 leading-relaxed">
               This manual expense will be soft-deleted. The audit log retains the deletion timestamp and user ID, and it will be excluded from subsequent financial P&L aggregations.
             </p>
             <div className="flex justify-end gap-2 pt-2">
@@ -714,6 +723,7 @@ export const ExpensesPage: React.FC = () => {
                 size="sm"
                 onClick={() => setDeleteConfirmId(null)}
                 disabled={deleteMutation.isPending}
+                className="border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
               >
                 Cancel
               </Button>
@@ -722,6 +732,7 @@ export const ExpensesPage: React.FC = () => {
                 size="sm"
                 onClick={confirmDelete}
                 disabled={deleteMutation.isPending}
+                className="bg-rose-600 hover:bg-rose-500 text-white"
               >
                 {deleteMutation.isPending ? "Deleting..." : "Confirm Delete"}
               </Button>

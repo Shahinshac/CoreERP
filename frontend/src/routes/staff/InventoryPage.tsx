@@ -131,51 +131,51 @@ export function InventoryPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-card rounded-xl p-5 border border-white/[0.14] shadow-none flex items-center justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
               Total Inventory Valuation
             </div>
-            <div className="text-2xl font-bold text-slate-900 mt-1 font-mono">
+            <div className="text-2xl font-bold text-zinc-100 mt-1 font-mono">
               ₹{valuationData ? parseFloat(valuationData.total_valuation).toLocaleString("en-IN", { minimumFractionDigits: 2 }) : "0.00"}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
+            <div className="text-xs text-zinc-400 mt-0.5">
               Across {valuationData?.total_items_count || 0} active catalog items
             </div>
           </div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+          <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl">
             <DollarSign className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-card rounded-xl p-5 border border-white/[0.14] shadow-none flex items-center justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
               Low Stock Warnings
             </div>
-            <div className="text-2xl font-bold text-amber-600 mt-1 font-mono">
+            <div className="text-2xl font-bold text-amber-400 mt-1 font-mono">
               {lowStockProducts.length}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
+            <div className="text-xs text-zinc-400 mt-0.5">
               Items at or below safety threshold
             </div>
           </div>
-          <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+          <div className="p-3 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-xl">
             <AlertTriangle className="h-6 w-6" />
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-card rounded-xl p-5 border border-white/[0.14] shadow-none flex items-center justify-between">
           <div>
-            <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
               Audit Trail Entries
             </div>
-            <div className="text-2xl font-bold text-blue-600 mt-1 font-mono">
+            <div className="text-2xl font-bold text-primary mt-1 font-mono">
               {movementsData?.total || 0}
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">Immutable stock movement logs</div>
+            <div className="text-xs text-zinc-400 mt-0.5">Immutable stock movement logs</div>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <div className="p-3 bg-primary/10 text-primary border border-primary/20 rounded-xl">
             <History className="h-6 w-6" />
           </div>
         </div>
@@ -183,7 +183,7 @@ export function InventoryPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-slate-100 p-1 rounded-xl">
+        <TabsList className="bg-surface-elevated border border-white/[0.14] p-1 rounded-xl">
           <TabsTrigger value="movements" className="flex items-center gap-1.5">
             <History className="h-4 w-4" />
             Movement History
@@ -203,7 +203,7 @@ export function InventoryPage() {
         ========================================== */}
         <TabsContent value="movements" className="space-y-4">
           {/* Filters */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-card p-4 rounded-xl border border-white/[0.14] shadow-none grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <Select
                 value={selectedProductId}
@@ -265,7 +265,7 @@ export function InventoryPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-card rounded-xl border border-white/[0.14] shadow-none overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -280,13 +280,13 @@ export function InventoryPage() {
               <TableBody>
                 {movementsLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={6} className="h-32 text-center text-zinc-400">
                       Loading audit ledger...
                     </TableCell>
                   </TableRow>
                 ) : !movementsData?.items || movementsData.items.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={6} className="h-32 text-center text-zinc-400">
                       No stock movements recorded yet.
                     </TableCell>
                   </TableRow>
@@ -294,16 +294,16 @@ export function InventoryPage() {
                   movementsData.items.map((m) => {
                     const isPositive = parseFloat(m.quantity) > 0
                     return (
-                      <TableRow key={m.id} className="hover:bg-slate-50/70 transition">
-                        <TableCell className="text-xs text-slate-600 font-mono">
+                      <TableRow key={m.id} className="hover:bg-white/[0.04] transition-colors">
+                        <TableCell className="text-xs text-zinc-400 font-mono">
                           {new Date(m.created_at).toLocaleString()}
                         </TableCell>
 
                         <TableCell>
-                          <div className="font-semibold text-slate-900">
+                          <div className="font-semibold text-zinc-100">
                             {m.product_name || "Unknown Product"}
                           </div>
-                          <div className="text-xs text-slate-500 font-mono">
+                          <div className="text-xs text-zinc-400 font-mono">
                             SKU: {m.product_sku || "—"}
                           </div>
                         </TableCell>
@@ -327,10 +327,10 @@ export function InventoryPage() {
                           <span
                             className={
                               isPositive
-                                ? "text-emerald-600"
+                                ? "text-emerald-400"
                                 : parseFloat(m.quantity) < 0
-                                ? "text-rose-600"
-                                : "text-slate-700"
+                                ? "text-rose-400"
+                                : "text-zinc-300"
                             }
                           >
                             {isPositive ? `+${m.quantity}` : m.quantity}
@@ -338,15 +338,15 @@ export function InventoryPage() {
                         </TableCell>
 
                         <TableCell>
-                          <div className="text-xs font-medium text-slate-800">
+                          <div className="text-xs font-medium text-zinc-200">
                             {m.reference_type}
                           </div>
                           {m.notes && (
-                            <div className="text-xs text-slate-500 italic mt-0.5">{m.notes}</div>
+                            <div className="text-xs text-zinc-400 italic mt-0.5">{m.notes}</div>
                           )}
                         </TableCell>
 
-                        <TableCell className="text-xs text-slate-600 font-mono">
+                        <TableCell className="text-xs text-zinc-400 font-mono">
                           {m.author_email || "System"}
                         </TableCell>
                       </TableRow>
@@ -358,10 +358,10 @@ export function InventoryPage() {
 
             {/* Pagination Controls */}
             {movementsData && movementsData.total_pages > 1 && (
-              <div className="p-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+              <div className="p-4 border-t border-white/[0.14] flex items-center justify-between text-xs text-zinc-400">
                 <div>
-                  Page <span className="font-bold">{movementsData.page}</span> of{" "}
-                  <span className="font-bold">{movementsData.total_pages}</span> (
+                  Page <span className="font-bold text-zinc-100">{movementsData.page}</span> of{" "}
+                  <span className="font-bold text-zinc-100">{movementsData.total_pages}</span> (
                   {movementsData.total} total records)
                 </div>
                 <div className="flex gap-2">
@@ -393,7 +393,7 @@ export function InventoryPage() {
             TAB 2: LOW STOCK ALERTS
         ========================================== */}
         <TabsContent value="lowstock" className="space-y-4">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-card rounded-xl border border-white/[0.14] shadow-none overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -408,39 +408,39 @@ export function InventoryPage() {
               <TableBody>
                 {lowStockLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={6} className="h-32 text-center text-zinc-400">
                       Checking stock levels...
                     </TableCell>
                   </TableRow>
                 ) : lowStockProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center text-emerald-600 font-medium">
+                    <TableCell colSpan={6} className="h-32 text-center text-emerald-400 font-medium">
                       All products currently meet or exceed minimum stock safety thresholds.
                     </TableCell>
                   </TableRow>
                 ) : (
                   lowStockProducts.map((p) => (
-                    <TableRow key={p.id} className="hover:bg-amber-50/40 transition">
+                    <TableRow key={p.id} className="hover:bg-white/[0.04] transition-colors">
                       <TableCell>
-                        <div className="font-semibold text-slate-900">{p.name}</div>
-                        <div className="text-xs text-slate-500 font-mono">SKU: {p.sku}</div>
+                        <div className="font-semibold text-zinc-100">{p.name}</div>
+                        <div className="text-xs text-zinc-400 font-mono">SKU: {p.sku}</div>
                       </TableCell>
 
-                      <TableCell className="text-xs text-slate-700">
+                      <TableCell className="text-xs text-zinc-300">
                         {p.category?.name || "—"}
                       </TableCell>
 
                       <TableCell className="text-center">
-                        <span className="font-mono font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 text-xs">
+                        <span className="font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20 text-xs">
                           {p.current_stock} {p.unit}
                         </span>
                       </TableCell>
 
-                      <TableCell className="text-center font-mono text-xs text-slate-600">
+                      <TableCell className="text-center font-mono text-xs text-zinc-400">
                         {p.min_stock} {p.unit}
                       </TableCell>
 
-                      <TableCell className="text-right font-mono text-slate-700 text-sm">
+                      <TableCell className="text-right font-mono text-zinc-300 text-sm">
                         ₹{parseFloat(p.purchase_price).toFixed(2)}
                       </TableCell>
 
@@ -448,7 +448,7 @@ export function InventoryPage() {
                         <Button
                           size="sm"
                           onClick={() => handleOpenStockOp(p, "in")}
-                          className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                          className="h-8 px-3 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
                         >
                           <ArrowUpCircle className="h-3.5 w-3.5 mr-1.5" />
                           Stock In
@@ -467,23 +467,23 @@ export function InventoryPage() {
         ========================================== */}
         <TabsContent value="valuation" className="space-y-6">
           {/* By Category */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-            <h3 className="text-lg font-semibold text-slate-900">Valuation by Category</h3>
+          <div className="bg-card rounded-xl border border-white/[0.14] shadow-none p-5 space-y-4">
+            <h3 className="text-lg font-semibold text-zinc-100">Valuation by Category</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {valuationData?.by_category.map((cat) => (
                 <div
                   key={cat.category_id}
-                  className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between"
+                  className="p-4 rounded-xl bg-surface-elevated border border-white/[0.10] flex flex-col justify-between"
                 >
                   <div>
-                    <div className="text-sm font-bold text-slate-900">{cat.category_name}</div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      Total Units: <span className="font-mono font-medium">{cat.total_quantity}</span>
+                    <div className="text-sm font-bold text-zinc-100">{cat.category_name}</div>
+                    <div className="text-xs text-zinc-400 mt-1">
+                      Total Units: <span className="font-mono font-medium text-zinc-300">{cat.total_quantity}</span>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-slate-200/60">
-                    <div className="text-xs text-slate-500">Stock Valuation</div>
-                    <div className="text-lg font-bold text-slate-900 font-mono">
+                  <div className="mt-3 pt-3 border-t border-white/[0.08]">
+                    <div className="text-xs text-zinc-400">Stock Valuation</div>
+                    <div className="text-lg font-bold text-zinc-100 font-mono">
                       ₹{parseFloat(cat.total_valuation).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </div>
                   </div>
@@ -493,9 +493,9 @@ export function InventoryPage() {
           </div>
 
           {/* Product Valuation Table */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200">
-              <h3 className="text-base font-semibold text-slate-900">Valuation by SKU</h3>
+          <div className="bg-card rounded-xl border border-white/[0.14] shadow-none overflow-hidden">
+            <div className="p-4 border-b border-white/[0.14]">
+              <h3 className="text-base font-semibold text-zinc-100">Valuation by SKU</h3>
             </div>
             <Table>
               <TableHeader>
@@ -510,32 +510,32 @@ export function InventoryPage() {
               <TableBody>
                 {valuationLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={5} className="h-32 text-center text-zinc-400">
                       Computing valuation metrics...
                     </TableCell>
                   </TableRow>
                 ) : !valuationData?.by_product || valuationData.by_product.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-slate-500">
+                    <TableCell colSpan={5} className="h-32 text-center text-zinc-400">
                       No products available for valuation.
                     </TableCell>
                   </TableRow>
                 ) : (
                   valuationData.by_product.map((item) => (
-                    <TableRow key={item.product_id} className="hover:bg-slate-50/70 transition">
-                      <TableCell className="font-semibold text-slate-900">
+                    <TableRow key={item.product_id} className="hover:bg-white/[0.04] transition-colors">
+                      <TableCell className="font-semibold text-zinc-100">
                         {item.product_name}
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-slate-500">
+                      <TableCell className="font-mono text-xs text-zinc-400">
                         {item.sku}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-slate-700">
+                      <TableCell className="text-right font-mono text-zinc-300">
                         ₹{parseFloat(item.purchase_price).toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-center font-mono font-bold text-slate-800">
+                      <TableCell className="text-center font-mono font-bold text-zinc-200">
                         {item.current_stock}
                       </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-emerald-700">
+                      <TableCell className="text-right font-mono font-bold text-emerald-400">
                         ₹{parseFloat(item.valuation).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </TableCell>
                     </TableRow>

@@ -356,3 +356,17 @@ def test_customer_staff_crud(client: TestClient, db_session: Session):
     search_resp = client.get("/api/staff/customers?search=Johnson", headers=staff_headers)
     assert search_resp.status_code == 200
     assert any(c["id"] == cust_id for c in search_resp.json())
+
+
+def test_pos_store_info_endpoint(client: TestClient, db_session: Session):
+    """Verify that staff can retrieve configured store branding and contact details for thermal receipt printing."""
+    _, staff_headers = create_test_staff(db_session)
+    resp = client.get("/api/pos/store-info", headers=staff_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "store_name" in data
+    assert "gstin" in data
+    assert "address" in data
+    assert "phone" in data
+    assert "email" in data
+    assert data["store_name"] is not None

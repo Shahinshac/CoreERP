@@ -1,6 +1,7 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import { useNavigate } from "react-router-dom"
-import { CheckCircle2, Download, ExternalLink, FileText, Printer, X } from "lucide-react"
+import { CheckCircle2, Download, ExternalLink, FileText, Printer, X, SlidersHorizontal } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -11,19 +12,24 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Sale } from "./api"
+import { Sale, posApi, POSStoreInfo } from "./api"
 import { Invoice, invoicingApi } from "@/features/invoicing/api"
+import { ThermalReceipt } from "./ThermalReceipt"
 
 interface ReceiptModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   sale: Sale | null
+  customerPhone?: string | null
+  customerGstin?: string | null
 }
 
 export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   open,
   onOpenChange,
   sale,
+  customerPhone,
+  customerGstin,
 }) => {
   const navigate = useNavigate()
   const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null)
@@ -33,9 +39,54 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const [buyerGstin, setBuyerGstin] = useState("")
   const [buyerState, setBuyerState] = useState("")
 
+  // Thermal printer configuration (persisted across sessions)
+  const [printerWidth, setPrinterWidth] = useState<"58mm" | "80mm">(() => {
+    try {
+      const saved = localStorage.getItem("pos_thermal_printer_width")
+      return saved === "58mm" ? "58mm" : "80mm"
+    } catch {
+      return "80mm"
+    }
+  })
+
+  // Store information
+  const [storeInfo, setStoreInfo] = useState<POSStoreInfo | null>(null)
+
+  // Cash payment tendered tracking
+  const [cashTendered, setCashTendered] = useState<string>("")
+
+  // Fetch store info when modal opens
+  useEffect(() => {
+    if (open) {
+      posApi
+        .getStoreInfo()
+        .then(setStoreInfo)
+        .catch(() => {
+          // Fallback defaults in ThermalReceipt
+        })
+    }
+  }, [open])
+
+  // Initialize cash tendered when sale is provided
+  useEffect(() => {
+    if (sale) {
+      setCashTendered(parseFloat(sale.total_amount).toFixed(2))
+    }
+  }, [sale])
+
   if (!sale) return null
 
+  const handleWidthChange = (w: "58mm" | "80mm") => {
+    setPrinterWidth(w)
+    try {
+      localStorage.setItem("pos_thermal_printer_width", w)
+    } catch {
+      // Ignored if storage is blocked
+    }
+  }
+
   const handlePrint = () => {
+    // Native browser printing; print styles in index.css isolate #thermal-receipt-print-area
     window.print()
   }
 
@@ -72,190 +123,245 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     }
   }
 
+  const grandTotalNum = parseFloat(sale.total_amount) || 0
+  const tenderedNum = parseFloat(cashTendered) || 0
+  const changeDue = tenderedNum >= grandTotalNum ? tenderedNum - grandTotalNum : 0
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(val) => {
-        if (!val) {
-          setGeneratedInvoice(null)
-          setShowTaxInvoiceForm(false)
-        }
-        onOpenChange(val)
-      }}
-    >
-      <div className="space-y-4 max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-2 text-emerald-600 justify-center">
-            <CheckCircle2 className="h-6 w-6" />
-            <DialogTitle className="text-xl">Checkout Complete</DialogTitle>
-          </div>
-          <DialogDescription className="text-center text-xs text-slate-500">
-            Sale recorded atomically with stock deductions.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(val) => {
+          if (!val) {
+            setGeneratedInvoice(null)
+            setShowTaxInvoiceForm(false)
+          }
+          onOpenChange(val)
+        }}
+      >
+        <div className="space-y-4 max-w-lg mx-auto">
+          {/* Header */}
+          <DialogHeader className="no-print">
+            <div className="flex items-center gap-2 text-emerald-500 justify-center">
+              <CheckCircle2 className="h-6 w-6" />
+              <DialogTitle className="text-xl text-zinc-100 font-bold">
+                Checkout Complete
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-center text-xs text-zinc-400">
+              Transaction finalized and inventory automatically decremented.
+            </DialogDescription>
+          </DialogHeader>
 
-        {/* Printable Receipt Paper */}
-        <div className="border border-dashed border-slate-300 rounded-xl p-5 bg-slate-50/50 space-y-3 font-mono text-xs text-slate-800">
-          <div className="text-center pb-2 border-b border-dashed border-slate-300">
-            <div className="font-bold text-sm text-slate-900">ERP RETAIL POS</div>
-            <div className="text-[11px] text-slate-500">Official Store Receipt</div>
-            <div className="mt-1 font-semibold text-slate-700">{sale.invoice_number}</div>
-            <div className="text-[10px] text-slate-400">
-              {new Date(sale.sale_date).toLocaleString()}
+          {/* Thermal Printer Width Selector & Controls */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-zinc-900/90 p-2.5 rounded-xl border border-white/[0.12] no-print">
+            <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              <span>Thermal Printer Format:</span>
+            </div>
+            <div className="flex items-center gap-1.5 bg-black/60 p-1 rounded-lg border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => handleWidthChange("58mm")}
+                className={`px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
+                  printerWidth === "58mm"
+                    ? "bg-primary text-white shadow-sm font-bold"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                58mm (Compact)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleWidthChange("80mm")}
+                className={`px-3 py-1 rounded-md text-xs font-mono font-medium transition-all ${
+                  printerWidth === "80mm"
+                    ? "bg-primary text-white shadow-sm font-bold"
+                    : "text-zinc-400 hover:text-zinc-200"
+                }`}
+              >
+                80mm (Standard)
+              </button>
             </div>
           </div>
 
-          <div className="flex justify-between text-[11px] text-slate-600">
-            <span>Customer: {sale.customer_name || "Walk-in"}</span>
-            <span>Cashier: {sale.staff_email.split("@")[0]}</span>
-          </div>
-
-          {/* Line Items */}
-          <div className="py-2 border-t border-b border-dashed border-slate-300 space-y-1.5">
-            {sale.items.map((item) => (
-              <div key={item.id} className="flex justify-between items-start">
-                <div className="max-w-[180px]">
-                  <div className="font-medium truncate text-slate-900">{item.product_name}</div>
-                  <div className="text-[10px] text-slate-400">
-                    {item.quantity} x ₹{parseFloat(item.unit_price).toFixed(2)}
-                    {parseFloat(item.discount_amount) > 0 && (
-                      <span className="text-rose-600 ml-1">
-                        (-₹{parseFloat(item.discount_amount).toFixed(2)})
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="font-semibold text-right">
-                  ₹{parseFloat(item.total_price).toFixed(2)}
-                </div>
+          {/* Cash Tendered & Change Calculator (when payment is cash) */}
+          {sale.payment_method === "cash" && (
+            <div className="flex items-center justify-between bg-zinc-900/60 px-3.5 py-2.5 rounded-xl border border-white/[0.08] text-xs no-print">
+              <div className="text-zinc-300 font-medium">
+                <span>Cash Tendered:</span>
+                {tenderedNum >= grandTotalNum && (
+                  <span className="ml-2 font-mono text-emerald-400 font-semibold">
+                    (Change: ₹{changeDue.toFixed(2)})
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-
-          {/* Calculation Breakdown */}
-          <div className="space-y-1 text-[11px]">
-            <div className="flex justify-between text-slate-600">
-              <span>Items Subtotal:</span>
-              <span>₹{parseFloat(sale.subtotal).toFixed(2)}</span>
-            </div>
-            {parseFloat(sale.discount_amount) > 0 && (
-              <div className="flex justify-between text-rose-600">
-                <span>Order Discount:</span>
-                <span>-₹{parseFloat(sale.discount_amount).toFixed(2)}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-zinc-400 font-mono">₹</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={cashTendered}
+                  onChange={(e) => setCashTendered(e.target.value)}
+                  placeholder={grandTotalNum.toFixed(2)}
+                  className="w-24 h-7 text-right bg-black text-zinc-100 rounded border border-white/[0.14] px-2 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                />
               </div>
-            )}
-            <div className="flex justify-between font-bold text-sm text-slate-900 pt-1 border-t border-slate-200">
-              <span>Grand Total:</span>
-              <span>₹{parseFloat(sale.total_amount).toFixed(2)}</span>
+            </div>
+          )}
+
+          {/* Scrollable Realistic Thermal Receipt Paper Preview */}
+          <div className="bg-zinc-950/80 p-3 rounded-xl border border-white/[0.10] flex flex-col items-center max-h-[380px] overflow-y-auto no-print">
+            <div className="text-[10px] text-zinc-400 font-mono mb-2 uppercase tracking-wider">
+              --- Live {printerWidth} Thermal Paper Slip Preview ---
+            </div>
+            <div className="shadow-2xl rounded-sm border border-neutral-300 transition-all duration-200">
+              <ThermalReceipt
+                sale={sale}
+                invoice={generatedInvoice}
+                storeInfo={storeInfo}
+                customerPhone={customerPhone}
+                customerGstin={customerGstin}
+                width={printerWidth}
+                cashTendered={cashTendered}
+              />
             </div>
           </div>
 
-          <div className="pt-2 text-center text-[10px] text-slate-400 border-t border-dashed border-slate-300">
-            Payment Method: <span className="uppercase font-semibold">{sale.payment_method}</span>
-          </div>
+          {/* Statutory GST Invoice Section (Preserved A4 & Accounting Flow) */}
+          {generatedInvoice ? (
+            <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-2 text-xs no-print">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-emerald-400">
+                  <FileText className="h-4 w-4" />
+                  Statutory GST Tax Invoice Linked
+                </div>
+                <span className="font-mono text-emerald-300 font-semibold">
+                  {generatedInvoice.invoice_number}
+                </span>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewInvoice}
+                  className="flex-1 h-8 text-xs border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/30"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                  View Invoice
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPdf}
+                  className="flex-1 h-8 text-xs border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/30"
+                >
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Download A4 PDF
+                </Button>
+              </div>
+            </div>
+          ) : showTaxInvoiceForm ? (
+            <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-950/20 space-y-2.5 text-xs no-print">
+              <div className="font-semibold text-blue-300 flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-blue-400" />
+                Tax Invoice Recipient Details
+              </div>
+              <div className="space-y-1.5">
+                <Input
+                  placeholder="Buyer / Business Name (defaults to customer)"
+                  value={buyerName}
+                  onChange={(e) => setBuyerName(e.target.value)}
+                  className="h-8 text-xs bg-black border-white/[0.14] text-zinc-100"
+                />
+                <Input
+                  placeholder="Buyer GSTIN (Optional, for B2B ITC)"
+                  value={buyerGstin}
+                  onChange={(e) => setBuyerGstin(e.target.value)}
+                  className="h-8 text-xs bg-black border-white/[0.14] text-zinc-100 uppercase font-mono"
+                />
+                <Input
+                  placeholder="Buyer State (e.g. Maharashtra, Delhi)"
+                  value={buyerState}
+                  onChange={(e) => setBuyerState(e.target.value)}
+                  className="h-8 text-xs bg-black border-white/[0.14] text-zinc-100"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleGenerateInvoice}
+                  disabled={isGenerating}
+                  className="flex-1 h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+                >
+                  {isGenerating ? "Finalizing..." : "Create Sequential Invoice"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowTaxInvoiceForm(false)}
+                  className="h-8 text-xs border-white/[0.14] text-zinc-300"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTaxInvoiceForm(true)}
+              className="w-full h-9 border-blue-500/30 bg-blue-950/20 hover:bg-blue-900/30 text-blue-300 text-xs font-semibold gap-1.5 no-print"
+            >
+              <FileText className="h-3.5 w-3.5 text-blue-400" />
+              Generate Statutory GST Tax Invoice
+            </Button>
+          )}
+
+          {/* Modal Actions */}
+          <DialogFooter className="flex gap-2 sm:justify-between pt-1 no-print">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="border-white/[0.14] text-zinc-300"
+            >
+              <X className="h-4 w-4 mr-1.5" />
+              Close
+            </Button>
+            <Button
+              size="sm"
+              onClick={handlePrint}
+              className="bg-primary hover:bg-primary/90 text-white font-semibold shadow-md gap-1.5"
+            >
+              <Printer className="h-4 w-4" />
+              Print Thermal Receipt ({printerWidth})
+            </Button>
+          </DialogFooter>
         </div>
+      </Dialog>
 
-        {/* Formal GST Invoice Section */}
-        {generatedInvoice ? (
-          <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/70 space-y-2 text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 font-bold text-emerald-800">
-                <FileText className="h-4 w-4" />
-                GST Tax Invoice Generated!
-              </div>
-              <span className="font-mono text-emerald-900 font-semibold">
-                {generatedInvoice.invoice_number}
-              </span>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewInvoice}
-                className="flex-1 h-8 text-xs bg-white text-emerald-700 hover:bg-emerald-50"
-              >
-                <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                View Invoice
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownloadPdf}
-                className="flex-1 h-8 text-xs bg-white text-emerald-700 hover:bg-emerald-50"
-              >
-                <Download className="h-3.5 w-3.5 mr-1" />
-                Download PDF
-              </Button>
-            </div>
-          </div>
-        ) : showTaxInvoiceForm ? (
-          <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2.5 text-xs">
-            <div className="font-semibold text-blue-900 flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
-              Tax Invoice Recipient Details
-            </div>
-            <div className="space-y-1.5">
-              <Input
-                placeholder="Buyer / Business Name (defaults to customer)"
-                value={buyerName}
-                onChange={(e) => setBuyerName(e.target.value)}
-                className="h-8 text-xs bg-white"
-              />
-              <Input
-                placeholder="Buyer GSTIN (Optional, for B2B ITC)"
-                value={buyerGstin}
-                onChange={(e) => setBuyerGstin(e.target.value)}
-                className="h-8 text-xs bg-white uppercase font-mono"
-              />
-              <Input
-                placeholder="Buyer State (e.g. Maharashtra, Delhi)"
-                value={buyerState}
-                onChange={(e) => setBuyerState(e.target.value)}
-                className="h-8 text-xs bg-white"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={handleGenerateInvoice}
-                disabled={isGenerating}
-                className="flex-1 h-8 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
-              >
-                {isGenerating ? "Finalizing..." : "Create Sequential Invoice"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowTaxInvoiceForm(false)}
-                className="h-8 text-xs"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowTaxInvoiceForm(true)}
-            className="w-full h-9 border-blue-200 bg-blue-50/50 hover:bg-blue-100 text-blue-700 text-xs font-semibold gap-1.5"
+      {/* Dedicated Portal for Browser-Native Thermal Printing */}
+      {open &&
+        createPortal(
+          <div
+            id="thermal-receipt-print-area"
+            className={printerWidth === "58mm" ? "receipt-58mm" : "receipt-80mm"}
           >
-            <FileText className="h-3.5 w-3.5" />
-            Generate Statutory GST Tax Invoice
-          </Button>
+            <ThermalReceipt
+              sale={sale}
+              invoice={generatedInvoice}
+              storeInfo={storeInfo}
+              customerPhone={customerPhone}
+              customerGstin={customerGstin}
+              width={printerWidth}
+              cashTendered={cashTendered}
+            />
+          </div>,
+          document.body
         )}
-
-        <DialogFooter className="flex gap-2 sm:justify-between pt-1">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            <X className="h-4 w-4 mr-1.5" />
-            Close
-          </Button>
-          <Button size="sm" onClick={handlePrint} className="bg-slate-900 text-white">
-            <Printer className="h-4 w-4 mr-1.5" />
-            Print Receipt
-          </Button>
-        </DialogFooter>
-      </div>
-    </Dialog>
+    </>
   )
 }
+export default ReceiptModal

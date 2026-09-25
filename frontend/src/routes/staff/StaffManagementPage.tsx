@@ -86,11 +86,11 @@ export const StaffManagementPage: React.FC = () => {
   }
 
   const roleColors: Record<string, string> = {
-    "Super Admin": "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-800",
-    "Admin": "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-    "Manager": "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-    "Accountant": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-    "Staff": "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700",
+    "Super Admin": "bg-purple-950/60 text-purple-300 border-purple-800/80",
+    "Admin": "bg-indigo-950/60 text-indigo-300 border-indigo-800/80",
+    "Manager": "bg-blue-950/60 text-blue-300 border-blue-800/80",
+    "Accountant": "bg-emerald-950/60 text-emerald-300 border-emerald-800/80",
+    "Staff": "bg-zinc-900 text-zinc-300 border-zinc-700/80",
   }
 
   return (
@@ -99,22 +99,22 @@ export const StaffManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
               Staff & Team Management
             </h1>
-            <Badge variant="outline" className="text-xs font-semibold text-indigo-600 border-indigo-200">
+            <Badge variant="outline" className="text-xs font-semibold text-primary border-primary/40 bg-primary/10">
               {totalCount} Members
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-zinc-400 mt-1">
             Manage employee profiles, role-based access permissions, and salary configurations.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Link to="/staff/salary">
-            <Button variant="outline" className="gap-1.5 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50">
-              <Calendar className="w-4 h-4" />
+            <Button variant="outline" className="gap-1.5 text-zinc-200 border-white/[0.16] hover:bg-[#18181C] hover:text-white">
+              <Calendar className="w-4 h-4 text-primary" />
               Payroll & Salaries
             </Button>
           </Link>
@@ -125,7 +125,7 @@ export const StaffManagementPage: React.FC = () => {
                 setSelectedStaff(null)
                 setIsStaffModalOpen(true)
               }}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm"
+              className="bg-primary hover:bg-blue-500 text-white gap-1.5 shadow-none font-medium"
             >
               <UserPlus className="w-4 h-4" />
               Add Staff Member
@@ -135,9 +135,9 @@ export const StaffManagementPage: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="p-4 bg-card border border-white/[0.14] rounded-xl shadow-none flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <Input
             placeholder="Search name, email, employee code..."
             value={searchTerm}
@@ -145,12 +145,12 @@ export const StaffManagementPage: React.FC = () => {
               setSearchTerm(e.target.value)
               setPage(1)
             }}
-            className="pl-9 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-sm"
+            className="pl-9 bg-black/40 border-white/[0.16] text-zinc-100 placeholder:text-zinc-500 text-sm"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
             <Filter className="w-3.5 h-3.5" /> Filter:
           </div>
 
@@ -160,7 +160,7 @@ export const StaffManagementPage: React.FC = () => {
               setRoleFilter(e.target.value)
               setPage(1)
             }}
-            className="h-9 px-2.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none"
+            className="h-9 px-2.5 text-xs bg-black/40 border border-white/[0.16] rounded-lg text-zinc-200 [&>option]:bg-[#0C0C0E] focus:outline-none focus:border-primary/60"
           >
             <option value="">All Roles</option>
             <option value="Super Admin">Super Admin</option>
@@ -176,7 +176,7 @@ export const StaffManagementPage: React.FC = () => {
               setActiveFilter(e.target.value)
               setPage(1)
             }}
-            className="h-9 px-2.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none"
+            className="h-9 px-2.5 text-xs bg-black/40 border border-white/[0.16] rounded-lg text-zinc-200 [&>option]:bg-[#0C0C0E] focus:outline-none focus:border-primary/60"
           >
             <option value="all">All Statuses</option>
             <option value="active">Active Only</option>
@@ -186,11 +186,11 @@ export const StaffManagementPage: React.FC = () => {
       </div>
 
       {/* Staff Members Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-white/[0.14] rounded-xl shadow-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <tr className="bg-white/[0.02] border-b border-white/[0.08] text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 <th className="py-3 px-4">Employee</th>
                 <th className="py-3 px-4">Role</th>
                 <th className="py-3 px-4">Emp Code</th>
@@ -200,28 +200,28 @@ export const StaffManagementPage: React.FC = () => {
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-white/[0.08]">
               {isLoading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center text-zinc-400">
                     Loading staff members...
                   </td>
                 </tr>
               ) : staffList.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 7 : 6} className="py-12 text-center text-zinc-400">
                     No staff members match the selected criteria.
                   </td>
                 </tr>
               ) : (
                 staffList.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr key={staff.id} className="hover:bg-white/[0.04] transition-colors">
                     <td className="py-3 px-4">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">
+                      <div className="font-semibold text-zinc-100">
                         {staff.full_name || staff.email.split("@")[0]}
                       </div>
-                      <div className="text-xs text-slate-500">{staff.email}</div>
-                      {staff.phone && <div className="text-xs text-slate-400">{staff.phone}</div>}
+                      <div className="text-xs text-zinc-400">{staff.email}</div>
+                      {staff.phone && <div className="text-xs text-zinc-500">{staff.phone}</div>}
                     </td>
 
                     <td className="py-3 px-4">
@@ -233,32 +233,32 @@ export const StaffManagementPage: React.FC = () => {
                       </Badge>
                     </td>
 
-                    <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-4 font-mono text-xs text-zinc-300">
                       {staff.employee_code || "—"}
                     </td>
 
-                    <td className="py-3 px-4 text-xs text-slate-600 dark:text-slate-300">
+                    <td className="py-3 px-4 text-xs text-zinc-300">
                       {staff.joining_date || "—"}
                     </td>
 
                     {isAdmin && (
-                      <td className="py-3 px-4 font-mono font-medium text-slate-900 dark:text-slate-100">
+                      <td className="py-3 px-4 font-mono font-medium text-zinc-100">
                         ₹{parseFloat(staff.base_salary || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
                     )}
 
                     <td className="py-3 px-4">
                       {staff.is_active ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-full">
                           <CheckCircle2 className="w-3 h-3" /> Active
                         </span>
                       ) : (
                         <div>
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400 px-2 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-400 bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded-full">
                             <XCircle className="w-3 h-3" /> Deactivated
                           </span>
                           {staff.deactivated_at && (
-                            <p className="text-[10px] text-slate-400 mt-0.5">
+                            <p className="text-[10px] text-zinc-500 mt-0.5">
                               Since {new Date(staff.deactivated_at).toLocaleDateString()}
                             </p>
                           )}
@@ -275,7 +275,7 @@ export const StaffManagementPage: React.FC = () => {
                             setSelectedStaff(staff)
                             setIsStaffModalOpen(true)
                           }}
-                          className="h-8 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 gap-1"
+                          className="h-8 text-xs text-zinc-300 hover:text-white hover:bg-white/[0.08] gap-1"
                         >
                           <Edit2 className="w-3.5 h-3.5" /> Edit
                         </Button>
@@ -287,8 +287,8 @@ export const StaffManagementPage: React.FC = () => {
                             onClick={() => handleToggleActive(staff)}
                             className={`h-8 text-xs ${
                               staff.is_active
-                                ? "text-rose-600 hover:text-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/50"
-                                : "text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
+                                ? "text-rose-400 hover:text-rose-300 hover:bg-rose-950/40"
+                                : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40"
                             }`}
                           >
                             {staff.is_active ? "Deactivate" : "Activate"}
@@ -305,7 +305,7 @@ export const StaffManagementPage: React.FC = () => {
 
         {/* Pagination */}
         {totalCount > limit && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+          <div className="p-4 border-t border-white/[0.08] flex items-center justify-between text-xs text-zinc-400">
             <div>
               Showing {(page - 1) * limit + 1} - {Math.min(page * limit, totalCount)} of {totalCount} members
             </div>
@@ -315,17 +315,17 @@ export const StaffManagementPage: React.FC = () => {
                 size="sm"
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
-                className="h-8 text-xs"
+                className="h-8 text-xs border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
               >
                 Previous
               </Button>
-              <span className="px-2">Page {page}</span>
+              <span className="px-2 text-zinc-300">Page {page}</span>
               <Button
                 variant="outline"
                 size="sm"
                 disabled={page * limit >= totalCount}
                 onClick={() => setPage(page + 1)}
-                className="h-8 text-xs"
+                className="h-8 text-xs border-white/[0.16] hover:bg-[#18181C] text-zinc-200"
               >
                 Next
               </Button>

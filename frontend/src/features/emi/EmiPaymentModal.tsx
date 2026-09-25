@@ -111,16 +111,16 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+            <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
               <CreditCard className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-base font-bold text-slate-900">
+              <DialogTitle className="text-base font-bold text-[#F5F5F7]">
                 {targetInstallment
                   ? `Pay Installment #${targetInstallment.installment_number}`
                   : "Record EMI Settlement"}
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500">
+              <DialogDescription className="text-xs text-[#94949C]">
                 {plan.customer_name ? `Customer: ${plan.customer_name}` : `Plan: ${plan.id.slice(0, 8)}...`}
               </DialogDescription>
             </div>
@@ -128,18 +128,18 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
         </DialogHeader>
 
         {/* Balance Overview Card */}
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs font-mono space-y-1">
+        <div className="p-3 bg-[#0A0A0C] rounded-xl border border-white/[0.14] text-xs font-mono space-y-1">
           {targetInstallment && (
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-[#94949C]">
               <span className="font-sans">Installment Due:</span>
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-[#F5F5F7]">
                 ₹{parseFloat(targetInstallment.remaining_amount).toFixed(2)}
               </span>
             </div>
           )}
-          <div className="flex justify-between text-slate-600">
+          <div className="flex justify-between text-[#94949C]">
             <span className="font-sans">Total Outstanding Balance:</span>
-            <span className="font-bold text-emerald-600">
+            <span className="font-bold text-emerald-400">
               ₹{parseFloat(plan.remaining_balance).toFixed(2)}
             </span>
           </div>
@@ -148,25 +148,25 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
         <div className="space-y-3 text-xs">
           {/* Method */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-700">Payment Channel *</label>
+            <label className="font-semibold text-[#C4C4C8]">Payment Channel *</label>
             <Select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className="h-9 text-xs"
+              className="h-9 text-xs bg-[#0A0A0C] border-white/[0.16] text-[#F5F5F7]"
             >
-              <option value="upi">UPI (Direct / QR)</option>
-              <option value="cash">Cash Register</option>
-              <option value="card">Debit / Credit Card</option>
-              <option value="payment_link">Payment Link</option>
-              <option value="emi">EMI Clearing Account</option>
+              <option value="upi" className="bg-[#0C0C0E] text-[#F5F5F7]">UPI (Direct / QR)</option>
+              <option value="cash" className="bg-[#0C0C0E] text-[#F5F5F7]">Cash Register</option>
+              <option value="card" className="bg-[#0C0C0E] text-[#F5F5F7]">Debit / Credit Card</option>
+              <option value="payment_link" className="bg-[#0C0C0E] text-[#F5F5F7]">Payment Link</option>
+              <option value="emi" className="bg-[#0C0C0E] text-[#F5F5F7]">EMI Clearing Account</option>
             </Select>
           </div>
 
           {/* Amount */}
           <div className="space-y-1">
             <div className="flex justify-between items-center">
-              <label className="font-semibold text-slate-700">Payment Amount (₹) *</label>
-              <span className="text-[10px] text-slate-400 font-sans">
+              <label className="font-semibold text-[#C4C4C8]">Payment Amount (₹) *</label>
+              <span className="text-[10px] text-[#94949C] font-sans">
                 Surplus cascades to next installments
               </span>
             </div>
@@ -174,14 +174,14 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
               value={amount}
               onChange={(val) => setAmount(val)}
               min={0.01}
-              className="h-9 font-mono font-bold text-emerald-600"
+              className="h-9 font-mono font-bold text-emerald-400"
               required
             />
           </div>
 
           {/* Reference / Transaction ID */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-700">
+            <label className="font-semibold text-[#C4C4C8]">
               External Gateway / UPI Ref ID
             </label>
             <Input
@@ -194,7 +194,7 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="font-semibold text-slate-700">Receipt Notes (Optional)</label>
+            <label className="font-semibold text-[#C4C4C8]">Receipt Notes (Optional)</label>
             <Input
               placeholder="e.g. Advance paid at counter"
               value={notes}
@@ -205,12 +205,12 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
 
           {/* Admin Overpayment Toggle (if amount > remaining plan balance) */}
           {parseFloat(amount) > parseFloat(plan.remaining_balance) && (
-            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50/70 space-y-2">
-              <div className="flex items-start gap-1.5 text-amber-800">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/10 space-y-2">
+              <div className="flex items-start gap-1.5 text-amber-300">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
                 <div>
                   <span className="font-bold">Overpayment Detected</span>
-                  <p className="text-[11px] text-amber-700 mt-0.5">
+                  <p className="text-[11px] text-amber-300/80 mt-0.5">
                     Amount exceeds the total remaining balance of ₹
                     {parseFloat(plan.remaining_balance).toFixed(2)}.
                   </p>
@@ -218,17 +218,17 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
               </div>
 
               {isAdmin ? (
-                <label className="flex items-center gap-2 pt-1 font-semibold text-amber-900 cursor-pointer">
+                <label className="flex items-center gap-2 pt-1 font-semibold text-amber-200 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={allowOverpayment}
                     onChange={(e) => setAllowOverpayment(e.target.checked)}
-                    className="rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    className="rounded border-amber-500/40 bg-[#0C0C0E] text-primary focus:ring-primary"
                   />
                   <span>Authorize overpayment as Administrator</span>
                 </label>
               ) : (
-                <p className="text-[10px] text-rose-600 font-semibold">
+                <p className="text-[10px] text-rose-400 font-semibold">
                   Administrator authorization required to accept overpayment.
                 </p>
               )}
@@ -250,7 +250,7 @@ export const EmiPaymentModal: React.FC<EmiPaymentModalProps> = ({
             type="submit"
             size="sm"
             disabled={isSubmitting}
-            className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+            className="h-9 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
           >
             {isSubmitting ? "Recording Receipt..." : "Record Payment Receipt"}
           </Button>

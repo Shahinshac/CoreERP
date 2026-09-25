@@ -49,6 +49,15 @@ def db_session():
     connection.close()
 
 
+from app.core.rate_limit import auth_rate_limiter
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    auth_rate_limiter.reset()
+    yield
+    auth_rate_limiter.reset()
+
+
 @pytest.fixture
 def client(db_session: Session):
     app = create_app()

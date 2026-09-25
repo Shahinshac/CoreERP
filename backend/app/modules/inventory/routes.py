@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.money import quantize_money
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff
 from app.modules.auth.models import StaffRole, StaffUser
 from app.modules.catalog.models import Category, Product
@@ -64,6 +65,17 @@ def stock_in(
             created_by=current_staff.id,
         )
         db.add(movement)
+        log_audit_event(
+            db=db,
+            event_type="inventory.stock_in",
+            description=f"Stock IN: {payload.quantity} units for product '{product.name}' (SKU: {product.sku}).",
+            actor_id=current_staff.id,
+            actor_type="staff",
+            actor_email=current_staff.email,
+            resource_type="product",
+            resource_id=str(product.id),
+            details={"quantity": str(payload.quantity), "reason": payload.reason},
+        )
 
     db.commit()
     db.refresh(movement)
@@ -82,6 +94,53 @@ def stock_in(
         product_sku=product.sku,
         author_email=current_staff.email,
     )
+
+
+@inventory_router.post("/purchases/{purchase_id}/receive", status_code=status.HTTP_200_OK)
+def receive_purchase(
+    purchase_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(get_current_staff),
+):
+    """
+    Receives an existing Purchase order:
+    1. Verifies purchase exists and is not already received.
+    2. Atomically increments product.current_stock for each item.
+    3. Creates a StockMovement with movement_type=MovementType.IN, reference_type='purchase', reference_id=purchase.id.
+    4. Sets purchase.status = 'received'.
+    """
+    from app.modules.sales.models import Purchase
+
+    purchase = db.query(Purchase).filter(Purchase.id == purchase_id).first()
+    if not purchase:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Purchase order not found.")
+    if purchase.status.lower() == "received":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Purchase order has already been received.")
+
+    with db.begin_nested():
+        for item in purchase.items:
+            product = db.query(Product).filter(Product.id == item.product_id).with_for_update().first()
+            if product:
+                product.current_stock = product.current_stock + item.quantity
+                movement = StockMovement(
+                    product_id=product.id,
+                    movement_type=MovementType.IN,
+                    quantity=item.quantity,
+                    reference_type="purchase",
+                    reference_id=purchase.id,
+                    notes=f"Stock received for purchase order {purchase.id}",
+                    created_by=current_staff.id,
+                )
+                db.add(movement)
+        purchase.status = "received"
+
+    db.commit()
+    db.refresh(purchase)
+    return {
+        "message": "Purchase received successfully",
+        "purchase_id": str(purchase.id),
+        "status": purchase.status,
+    }
 
 
 @inventory_router.post("/stock-out", response_model=StockMovementResponse, status_code=status.HTTP_201_CREATED)
@@ -122,6 +181,17 @@ def stock_out(
             created_by=current_staff.id,
         )
         db.add(movement)
+        log_audit_event(
+            db=db,
+            event_type="inventory.stock_out",
+            description=f"Stock OUT: {payload.quantity} units for product '{product.name}' (SKU: {product.sku}).",
+            actor_id=current_staff.id,
+            actor_type="staff",
+            actor_email=current_staff.email,
+            resource_type="product",
+            resource_id=str(product.id),
+            details={"quantity": str(-payload.quantity), "reason": payload.reason},
+        )
 
     db.commit()
     db.refresh(movement)
@@ -195,6 +265,17 @@ def stock_adjustment(
             created_by=current_staff.id,
         )
         db.add(movement)
+        log_audit_event(
+            db=db,
+            event_type="inventory.stock_adjustment",
+            description=f"Stock adjustment: {payload.quantity} units for product '{product.name}' (SKU: {product.sku}, override: {payload.is_override}).",
+            actor_id=current_staff.id,
+            actor_type="staff",
+            actor_email=current_staff.email,
+            resource_type="product",
+            resource_id=str(product.id),
+            details={"quantity": str(payload.quantity), "is_override": payload.is_override, "reason": payload.reason},
+        )
 
     db.commit()
     db.refresh(movement)

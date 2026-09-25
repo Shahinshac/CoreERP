@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.db import get_db
 from app.core.security import hash_password
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff, require_roles
 from app.modules.auth.models import StaffRole, StaffUser
 from app.modules.hr.models import SalaryRecord, SalaryRecordStatus
@@ -185,6 +186,17 @@ def create_staff(
         is_active=True,
     )
     db.add(new_staff)
+    log_audit_event(
+        db=db,
+        event_type="user.staff_created",
+        description=f"Staff user '{new_staff.email}' created with role '{new_staff.role}'.",
+        actor_id=caller.id,
+        actor_type="staff",
+        actor_email=caller.email,
+        resource_type="staff_user",
+        resource_id=str(new_staff.id),
+        details={"role": str(new_staff.role), "full_name": new_staff.full_name},
+    )
     db.commit()
     db.refresh(new_staff)
 
@@ -285,6 +297,18 @@ def update_staff(
             )
         staff.deductions_config = [d.model_dump(mode="json") for d in payload.deductions_config]
 
+    log_audit_event(
+        db=db,
+        event_type="user.staff_updated",
+        description=f"Staff user '{staff.email}' profile updated by {caller.email}.",
+        actor_id=caller.id,
+        actor_type="staff",
+        actor_email=caller.email,
+        resource_type="staff_user",
+        resource_id=str(staff.id),
+        details={"role": str(staff.role), "is_active": staff.is_active},
+    )
+
     db.commit()
     db.refresh(staff)
     return _build_staff_response(staff, caller)
@@ -317,9 +341,23 @@ def toggle_staff_active(
     if staff.is_active:
         staff.is_active = False
         staff.deactivated_at = datetime.now(timezone.utc)
+        action_str = "deactivated"
     else:
         staff.is_active = True
         staff.deactivated_at = None
+        action_str = "activated"
+
+    log_audit_event(
+        db=db,
+        event_type=f"user.staff_{action_str}",
+        description=f"Staff user '{staff.email}' {action_str} by {caller.email}.",
+        actor_id=caller.id,
+        actor_type="staff",
+        actor_email=caller.email,
+        resource_type="staff_user",
+        resource_id=str(staff.id),
+        details={"is_active": staff.is_active},
+    )
 
     db.commit()
     db.refresh(staff)

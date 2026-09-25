@@ -59,10 +59,24 @@ export const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps
       }
     }
 
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+      let val = e.target.value.trim()
+      if (val !== "" && val !== "-" && !isNaN(Number(val))) {
+        if (/^0+\d/.test(val)) {
+          val = val.replace(/^0+/, "")
+          if (val === "" || val.startsWith(".")) {
+            val = "0" + val
+          }
+          onChange(val)
+        }
+      }
+      props.onBlur?.(e)
+    }
+
     return (
       <div className="relative flex items-center w-full">
         {prefix && (
-          <span className="absolute left-3 text-slate-400 text-sm font-medium select-none pointer-events-none">
+          <span className="absolute left-3 text-zinc-500 text-sm font-medium select-none pointer-events-none">
             {prefix}
           </span>
         )}
@@ -73,16 +87,17 @@ export const NumericInput = React.forwardRef<HTMLInputElement, NumericInputProps
           value={value}
           onChange={handleChange}
           onPaste={handlePaste}
+          onBlur={handleBlur}
           className={cn(
             prefix && "pl-8",
             suffix && "pr-12",
-            "font-mono text-slate-800",
+            "font-mono text-zinc-100",
             className
           )}
           {...props}
         />
         {suffix && (
-          <span className="absolute right-3 text-slate-400 text-xs font-medium select-none pointer-events-none uppercase">
+          <span className="absolute right-3 text-zinc-500 text-xs font-medium select-none pointer-events-none uppercase">
             {suffix}
           </span>
         )}

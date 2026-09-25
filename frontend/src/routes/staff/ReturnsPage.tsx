@@ -109,16 +109,16 @@ export function ReturnsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Sales Returns & Refunds</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Sales Returns & Refunds</h1>
+        <p className="text-sm text-zinc-400">
           Reverse sales transactions, restore inventory ledger stock, and audit merchandise returns.
         </p>
       </div>
 
       {/* Invoice Lookup Card */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-          <Search className="h-4 w-4 text-blue-600" />
+      <div className="bg-card p-5 rounded-xl border border-white/[0.14] shadow-none space-y-3">
+        <div className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
+          <Search className="h-4 w-4 text-primary" />
           Lookup Invoice for Return
         </div>
         <div className="flex gap-2 max-w-xl">
@@ -126,9 +126,9 @@ export function ReturnsPage() {
             value={invoiceQuery}
             onChange={(e) => setInvoiceQuery(e.target.value)}
             placeholder="Enter Invoice Number (e.g. POS-20260922-XXXX)..."
-            className="font-mono text-sm"
+            className="font-mono text-sm bg-black/40 border-white/[0.16] text-zinc-100 placeholder:text-zinc-500"
           />
-          <Button onClick={() => handleLookup()} className="bg-slate-900 text-white shrink-0">
+          <Button onClick={() => handleLookup()} className="bg-primary hover:bg-blue-500 text-white shrink-0 font-medium">
             Find Sale
           </Button>
         </div>
@@ -137,41 +137,41 @@ export function ReturnsPage() {
       {/* Return Processing Form */}
       {activeSale && (
         <form onSubmit={handleSubmitReturn} className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b border-slate-100 gap-2">
+          <div className="bg-card rounded-xl border border-white/[0.14] shadow-none overflow-hidden p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b border-white/[0.10] gap-2">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-slate-900 font-mono">
+                  <span className="font-bold text-lg text-zinc-100 font-mono">
                     {activeSale.invoice_number}
                   </span>
                   <Badge variant={activeSale.status === "completed" ? "default" : "destructive"}>
                     {activeSale.status}
                   </Badge>
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  Customer: <span className="font-medium text-slate-700">{activeSale.customer_name}</span> •
+                <div className="text-xs text-zinc-400 mt-0.5">
+                  Customer: <span className="font-medium text-zinc-200">{activeSale.customer_name}</span> •
                   Date: {new Date(activeSale.sale_date).toLocaleString()}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-xs text-slate-400">Total Invoice Value</div>
-                <div className="font-mono font-bold text-lg text-slate-900">
+                <div className="text-xs text-zinc-400">Total Invoice Value</div>
+                <div className="font-mono font-bold text-lg text-zinc-100">
                   ₹{parseFloat(activeSale.total_amount).toFixed(2)}
                 </div>
               </div>
             </div>
 
             {/* Sale Items Return Table */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="border border-white/[0.14] rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Sold Product</TableHead>
-                    <TableHead className="text-center">Sold Qty</TableHead>
-                    <TableHead className="text-center">Previously Returned</TableHead>
-                    <TableHead className="text-center">Returnable Balance</TableHead>
-                    <TableHead className="text-right">Unit Sold Price</TableHead>
-                    <TableHead className="text-right w-36">Return Qty</TableHead>
+                  <TableRow className="border-white/[0.10] bg-white/[0.02]">
+                    <TableHead className="text-zinc-400">Sold Product</TableHead>
+                    <TableHead className="text-center text-zinc-400">Sold Qty</TableHead>
+                    <TableHead className="text-center text-zinc-400">Previously Returned</TableHead>
+                    <TableHead className="text-center text-zinc-400">Returnable Balance</TableHead>
+                    <TableHead className="text-right text-zinc-400">Unit Sold Price</TableHead>
+                    <TableHead className="text-right w-36 text-zinc-400">Return Qty</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -182,23 +182,23 @@ export function ReturnsPage() {
                     const isFullyReturned = returnable <= 0
 
                     return (
-                      <TableRow key={item.id} className={isFullyReturned ? "bg-slate-50/70 opacity-60" : ""}>
+                      <TableRow key={item.id} className={isFullyReturned ? "bg-white/[0.02] opacity-40 border-white/[0.06]" : "border-white/[0.08]"}>
                         <TableCell>
-                          <div className="font-semibold text-slate-900">{item.product_name}</div>
-                          <div className="text-xs text-slate-400 font-mono">SKU: {item.product_sku}</div>
+                          <div className="font-semibold text-zinc-100">{item.product_name}</div>
+                          <div className="text-xs text-zinc-400 font-mono">SKU: {item.product_sku}</div>
                         </TableCell>
 
-                        <TableCell className="text-center font-mono text-xs">{item.quantity}</TableCell>
+                        <TableCell className="text-center font-mono text-xs text-zinc-300">{item.quantity}</TableCell>
 
-                        <TableCell className="text-center font-mono text-xs text-amber-600">
+                        <TableCell className="text-center font-mono text-xs text-amber-400">
                           {item.returned_quantity}
                         </TableCell>
 
-                        <TableCell className="text-center font-mono text-xs font-bold text-slate-800">
+                        <TableCell className="text-center font-mono text-xs font-bold text-zinc-100">
                           {returnable.toFixed(3)}
                         </TableCell>
 
-                        <TableCell className="text-right font-mono text-xs">
+                        <TableCell className="text-right font-mono text-xs text-zinc-200">
                           ₹{parseFloat(item.unit_price).toFixed(2)}
                         </TableCell>
 
@@ -209,7 +209,7 @@ export function ReturnsPage() {
                             precisionType="quantity"
                             disabled={isFullyReturned || isSubmitting}
                             placeholder="0.000"
-                            className="h-8 text-right font-mono text-xs"
+                            className="h-8 text-right font-mono text-xs bg-black/40 border-white/[0.16] text-zinc-100 placeholder:text-zinc-500"
                           />
                         </TableCell>
                       </TableRow>
@@ -221,11 +221,12 @@ export function ReturnsPage() {
 
             {/* Return Reason Field */}
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-700">Reason for Return / Defect Notes</label>
+              <label className="text-xs font-medium text-zinc-300">Reason for Return / Defect Notes</label>
               <Input
                 value={returnReason}
                 onChange={(e) => setReturnReason(e.target.value)}
                 placeholder="e.g. Defective merchandise, incorrect model, customer exchange"
+                className="bg-black/40 border-white/[0.16] text-zinc-100 placeholder:text-zinc-500"
               />
             </div>
 
@@ -234,7 +235,7 @@ export function ReturnsPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold gap-2"
+                className="bg-rose-600 hover:bg-rose-500 text-white font-semibold gap-2 border border-rose-500/30"
               >
                 <RotateCcw className="h-4 w-4" />
                 {isSubmitting ? "Processing Return..." : "Submit Return & Restore Stock"}
@@ -246,16 +247,16 @@ export function ReturnsPage() {
 
       {/* Return Success Confirmation Banner */}
       {completedReturn && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="h-6 w-6 text-emerald-400 shrink-0" />
             <div>
-              <div className="text-sm font-bold text-emerald-900">
+              <div className="text-sm font-bold text-emerald-300">
                 Return Completed ({completedReturn.return_number})
               </div>
-              <div className="text-xs text-emerald-700">
+              <div className="text-xs text-emerald-400/80">
                 Refund amount of{" "}
-                <span className="font-mono font-bold">
+                <span className="font-mono font-bold text-emerald-200">
                   ₹{parseFloat(completedReturn.total_refund_amount).toFixed(2)}
                 </span>{" "}
                 recorded. Stock ledger updated with incoming reversal movements.
@@ -266,9 +267,9 @@ export function ReturnsPage() {
       )}
 
       {/* Recent Sales for Quick Action */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-3">
-        <div className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-          <Receipt className="h-4 w-4 text-slate-500" />
+      <div className="bg-card rounded-xl border border-white/[0.14] shadow-none p-4 space-y-3">
+        <div className="font-semibold text-zinc-200 text-sm flex items-center gap-2">
+          <Receipt className="h-4 w-4 text-zinc-400" />
           Recent Invoices (Quick Select)
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -276,22 +277,22 @@ export function ReturnsPage() {
             <div
               key={sale.id}
               onClick={() => handleLookup(sale.invoice_number)}
-              className="p-3 rounded-lg border border-slate-200 hover:border-blue-500 hover:shadow-sm cursor-pointer transition flex flex-col justify-between"
+              className="p-3 rounded-lg border border-white/[0.12] bg-[#0C0C0E] hover:border-primary/60 hover:bg-[#18181C] cursor-pointer transition flex flex-col justify-between"
             >
               <div className="flex justify-between items-start">
-                <span className="font-mono text-xs font-semibold text-slate-900">
+                <span className="font-mono text-xs font-semibold text-zinc-100">
                   {sale.invoice_number}
                 </span>
                 <Badge variant={sale.status === "completed" ? "outline" : "destructive"} className="text-[10px]">
                   {sale.status}
                 </Badge>
               </div>
-              <div className="text-[11px] text-slate-500 mt-2">
+              <div className="text-[11px] text-zinc-400 mt-2">
                 Customer: {sale.customer_name || "Walk-in"}
               </div>
-              <div className="text-xs font-bold font-mono text-slate-800 mt-1 flex justify-between">
+              <div className="text-xs font-bold font-mono text-zinc-200 mt-1 flex justify-between">
                 <span>₹{parseFloat(sale.total_amount).toFixed(2)}</span>
-                <span className="text-[10px] text-blue-600 font-normal">Select</span>
+                <span className="text-[10px] text-primary font-normal">Select</span>
               </div>
             </div>
           ))}

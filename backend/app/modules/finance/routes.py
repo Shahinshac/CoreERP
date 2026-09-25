@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.db import get_db
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff, require_roles
 from app.modules.auth.models import StaffRole, StaffUser
 from app.modules.finance.models import Expense, ExpenseCategory, ExpenseSource
@@ -149,6 +150,17 @@ def create_expense(
         is_deleted=False,
     )
     db.add(new_expense)
+    log_audit_event(
+        db=db,
+        event_type="finance.expense_created",
+        description=f"Expense created: ₹{new_expense.amount} under category '{new_expense.category}'.",
+        actor_id=caller.id,
+        actor_type="staff",
+        actor_email=caller.email,
+        resource_type="expense",
+        resource_id=str(new_expense.id),
+        details={"category": new_expense.category, "amount": str(new_expense.amount)},
+    )
     db.commit()
     db.refresh(new_expense)
 
@@ -244,6 +256,18 @@ def delete_expense(
     expense.is_deleted = True
     expense.deleted_at = datetime.now(timezone.utc)
     expense.deleted_by = caller.id
+
+    log_audit_event(
+        db=db,
+        event_type="finance.expense_deleted",
+        description=f"Expense soft-deleted: ₹{expense.amount} under category '{expense.category}'.",
+        actor_id=caller.id,
+        actor_type="staff",
+        actor_email=caller.email,
+        resource_type="expense",
+        resource_id=str(expense.id),
+        details={"category": expense.category, "amount": str(expense.amount)},
+    )
 
     db.commit()
     db.refresh(expense)

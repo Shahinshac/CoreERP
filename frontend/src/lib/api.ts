@@ -158,6 +158,12 @@ export const apiClient = {
       method: "PUT",
       body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
     }),
+  patch: <T>(path: string, body?: unknown, options?: RequestInit) =>
+    requestWithRetry<T>(path, {
+      ...options,
+      method: "PATCH",
+      body: body !== undefined ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
+    }),
   delete: <T>(path: string, options?: RequestInit) =>
     requestWithRetry<T>(path, { ...options, method: "DELETE" }),
   upload: <T>(path: string, formData: FormData, options?: RequestInit) =>

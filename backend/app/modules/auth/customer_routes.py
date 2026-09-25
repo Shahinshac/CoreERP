@@ -1,16 +1,24 @@
+import csv
 from datetime import datetime
 from decimal import Decimal
+from io import StringIO
 import secrets
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.core.security import hash_password
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff, require_roles
 from app.modules.auth.models import Customer, StaffRole, StaffUser
 from app.modules.auth.schemas import EmailType
+from app.modules.catalog.schemas import (
+    ImportConfirmResponse,
+    ImportPreviewResponse,
+    RowImportResult,
+)
 from app.modules.sales.models import Sale
 
 staff_customer_router = APIRouter(prefix="/api/staff/customers", tags=["Staff Customers"])
@@ -150,7 +158,7 @@ def get_customer(
 def create_customer(
     payload: CustomerCreateRequest,
     db: Session = Depends(get_db),
-    _: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER, StaffRole.STAFF)),
+    current_staff: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER, StaffRole.STAFF)),
 ):
     existing = db.query(Customer).filter(Customer.email == payload.email).first()
     if existing:
@@ -171,6 +179,17 @@ def create_customer(
         is_active=True,
     )
     db.add(customer)
+    log_audit_event(
+        db=db,
+        event_type="customer.created",
+        description=f"Customer '{customer.name}' ({customer.email}) created by staff {current_staff.email}.",
+        actor_id=current_staff.id,
+        actor_type="staff",
+        actor_email=current_staff.email,
+        resource_type="customer",
+        resource_id=str(customer.id),
+        details={"name": customer.name, "email": customer.email, "phone": customer.phone},
+    )
     db.commit()
     db.refresh(customer)
 
@@ -194,7 +213,7 @@ def update_customer(
     customer_id: uuid.UUID,
     payload: CustomerUpdateRequest,
     db: Session = Depends(get_db),
-    _: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER, StaffRole.STAFF)),
+    current_staff: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER, StaffRole.STAFF)),
 ):
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
@@ -213,7 +232,165 @@ def update_customer(
     if payload.is_active is not None:
         customer.is_active = payload.is_active
 
+    log_audit_event(
+        db=db,
+        event_type="customer.updated",
+        description=f"Customer '{customer.name}' ({customer.email}) updated by staff {current_staff.email}.",
+        actor_id=current_staff.id,
+        actor_type="staff",
+        actor_email=current_staff.email,
+        resource_type="customer",
+        resource_id=str(customer.id),
+        details={"is_active": customer.is_active},
+    )
+
     db.commit()
     db.refresh(customer)
 
-    return get_customer(customer_id, db, _)
+    return get_customer(customer_id, db, current_staff)
+
+
+# ==========================================
+# BULK CSV IMPORT FOR CUSTOMERS
+# ==========================================
+
+def _parse_and_validate_customer_rows(db: Session, reader: csv.DictReader) -> list[RowImportResult]:
+    seen_emails = set()
+    results: list[RowImportResult] = []
+
+    for idx, raw_row in enumerate(reader, start=2):
+        norm_row = {k.strip().lower(): (v.strip() if v else "") for k, v in raw_row.items() if k}
+        errors: list[str] = []
+
+        name = norm_row.get("name") or norm_row.get("customer_name") or ""
+        email = norm_row.get("email") or norm_row.get("customer_email") or ""
+        phone = norm_row.get("phone") or norm_row.get("mobile") or None
+        address = norm_row.get("address") or None
+        gstin = norm_row.get("gstin") or norm_row.get("gst") or None
+        state = norm_row.get("state") or None
+        password = norm_row.get("password") or None
+
+        if not name:
+            errors.append("Customer name is required.")
+
+        if not email:
+            errors.append("Customer email is required.")
+        else:
+            email_lower = email.lower()
+            if "@" not in email_lower or "." not in email_lower.split("@")[-1]:
+                errors.append(f"Invalid email address '{email}'.")
+            elif email_lower in seen_emails:
+                errors.append(f"Duplicate email '{email}' in import batch.")
+            else:
+                seen_emails.add(email_lower)
+                existing = db.query(Customer).filter(Customer.email.ilike(email)).first()
+                if existing:
+                    errors.append(f"Customer with email '{email}' already exists.")
+
+        parsed_data = {
+            "name": name,
+            "email": email,
+            "phone": phone,
+            "address": address,
+            "gstin": gstin,
+            "state": state,
+            "has_custom_password": bool(password),
+            "password": password,
+        }
+
+        results.append(
+            RowImportResult(
+                row_number=idx,
+                data=parsed_data,
+                is_valid=(len(errors) == 0),
+                errors=errors,
+            )
+        )
+    return results
+
+
+@staff_customer_router.post("/import/preview", response_model=ImportPreviewResponse)
+async def preview_customer_import(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER)),
+):
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSV file is empty or missing headers.")
+
+    results = _parse_and_validate_customer_rows(db, reader)
+    valid_count = sum(1 for r in results if r.is_valid)
+
+    return ImportPreviewResponse(
+        total_rows=len(results),
+        valid_count=valid_count,
+        invalid_count=len(results) - valid_count,
+        rows=results,
+    )
+
+
+@staff_customer_router.post("/import/confirm", response_model=ImportConfirmResponse)
+async def confirm_customer_import(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER)),
+):
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = content.decode("latin-1")
+
+    reader = csv.DictReader(StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CSV file is empty or missing headers.")
+
+    results = _parse_and_validate_customer_rows(db, reader)
+    imported_count = 0
+    skipped_count = 0
+
+    for res in results:
+        if res.is_valid:
+            d = res.data
+            pwd = d.get("password") or secrets.token_urlsafe(12)
+            customer = Customer(
+                name=d["name"],
+                email=d["email"],
+                phone=d["phone"],
+                address=d["address"],
+                gstin=d["gstin"],
+                state=d["state"],
+                password_hash=hash_password(pwd),
+                is_active=True,
+            )
+            db.add(customer)
+            imported_count += 1
+        else:
+            skipped_count += 1
+
+    if imported_count > 0:
+        db.commit()
+        log_audit_event(
+            db=db,
+            event_type="customers.bulk_imported",
+            description=f"Bulk imported {imported_count} customers ({skipped_count} invalid skipped).",
+            actor_id=current_staff.id if current_staff else None,
+            actor_type="staff",
+            actor_email=current_staff.email if current_staff else None,
+            resource_type="customer",
+            details={"imported_count": imported_count, "skipped_count": skipped_count},
+        )
+
+    return ImportConfirmResponse(
+        total_processed=len(results),
+        imported_count=imported_count,
+        skipped_count=skipped_count,
+        results=results,
+    )

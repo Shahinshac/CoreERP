@@ -1,3 +1,4 @@
+import logging
 import urllib.parse
 import uuid
 from datetime import date, datetime
@@ -10,9 +11,11 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import settings
 from app.core.db import get_db
 from app.core.money import quantize_money
+from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff
 from app.modules.auth.models import Customer, StaffRole, StaffUser
 from app.modules.invoicing.models import Invoice
+from app.modules.notifications.service import email_service
 from app.modules.payments.models import Payment, PaymentMethod, PaymentStatus
 from app.modules.payments.schemas import (
     PaymentCreateRequest,
@@ -21,7 +24,105 @@ from app.modules.payments.schemas import (
     UPIIntentResponse,
 )
 
+logger = logging.getLogger("app.payments")
 router = APIRouter(prefix="/api/payments", tags=["Payments"])
+
+
+def notify_payment_received_safely(db: Session, payment: Payment) -> None:
+    """
+    Dispatches a payment-received transactional email to the customer.
+    Must be called strictly AFTER database commit so that failures never rollback payment.
+    """
+    try:
+        if not payment.customer_id:
+            return
+        customer = db.execute(
+            select(Customer).filter(Customer.id == payment.customer_id)
+        ).scalar_one_or_none()
+        if not customer or not customer.email or not customer.email.strip():
+            return
+
+        inv_number = None
+        remaining = None
+        if payment.invoice_id:
+            inv = db.execute(
+                select(Invoice)
+                .options(selectinload(Invoice.payments))
+                .filter(Invoice.id == payment.invoice_id)
+            ).scalar_one_or_none()
+            if inv:
+                inv_number = inv.invoice_number
+                paid = sum(
+                    (p.amount for p in inv.payments if p.status == PaymentStatus.PAID.value),
+                    Decimal("0.00"),
+                )
+                bal = inv.grand_total - paid
+                remaining = max(Decimal("0.00"), bal)
+
+        subject = f"Payment Received: ₹{payment.amount:.2f}"
+        if inv_number:
+            subject += f" for Invoice #{inv_number}"
+
+        body_lines = [
+            f"Dear {customer.name},",
+            "",
+            f"We have received your payment of ₹{payment.amount:.2f}.",
+            f"Payment Method: {str(payment.method).upper()}",
+            f"Reference / ID: {payment.reference_id or str(payment.id)[:8]}",
+        ]
+        if inv_number:
+            body_lines.append(f"Invoice Number: {inv_number}")
+            if remaining is not None:
+                body_lines.append(f"Remaining Invoice Balance: ₹{remaining:.2f}")
+
+        body_lines.extend([
+            "",
+            "Thank you for your business!",
+            f"{settings.SELLER_NAME}",
+        ])
+        body_text = "\n".join(body_lines)
+
+        inv_row = (
+            f"<tr style='border-bottom: 1px solid #eee;'><td style='padding: 8px 0; color: #666;'>Invoice Number</td><td style='padding: 8px 0; font-weight: bold; color: #111;'>{inv_number}</td></tr>"
+            if inv_number
+            else ""
+        )
+        rem_row = (
+            f"<tr style='border-bottom: 1px solid #eee;'><td style='padding: 8px 0; color: #666;'>Remaining Balance</td><td style='padding: 8px 0; font-weight: bold; color: #111;'>₹{remaining:.2f}</td></tr>"
+            if remaining is not None
+            else ""
+        )
+
+        body_html = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+            <div style="margin-bottom: 20px;">
+                <span style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; color: #059669; background: #ecfdf5; padding: 4px 8px; border-radius: 4px;">Receipt</span>
+                <h2 style="font-size: 20px; font-weight: 700; color: #111827; margin: 8px 0 0 0;">Payment Received</h2>
+            </div>
+            <p style="font-size: 14px; color: #4b5563; margin-top: 0;">Dear <strong>{customer.name}</strong>,</p>
+            <p style="font-size: 14px; color: #4b5563;">Thank you for your payment. Your transaction has been recorded successfully.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
+                <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #6b7280;">Amount Received</td><td style="padding: 8px 0; font-weight: 700; color: #111827;">₹{payment.amount:.2f}</td></tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #6b7280;">Payment Method</td><td style="padding: 8px 0; font-weight: 600; color: #111827;">{str(payment.method).upper()}</td></tr>
+                <tr style="border-bottom: 1px solid #f3f4f6;"><td style="padding: 8px 0; color: #6b7280;">Transaction Ref</td><td style="padding: 8px 0; font-family: monospace; color: #374151;">{payment.reference_id or str(payment.id)[:8]}</td></tr>
+                {inv_row}
+                {rem_row}
+            </table>
+            <p style="font-size: 12px; color: #6b7280;">For inquiries regarding this receipt, contact {settings.SELLER_EMAIL} or call {settings.SELLER_PHONE}.</p>
+            <div style="border-top: 1px solid #f3f4f6; margin-top: 24px; padding-top: 12px; font-size: 11px; color: #9ca3af;">
+                {settings.SELLER_NAME} &bull; {settings.SELLER_ADDRESS}
+            </div>
+        </div>
+        """
+
+        email_service.send_email(
+            to_email=customer.email,
+            subject=subject,
+            body_text=body_text,
+            body_html=body_html,
+        )
+    except Exception as exc:
+        logger.error(f"[EMAIL] Failed to dispatch payment confirmation email: {str(exc)}")
 
 
 def build_payment_response(db: Session, payment: Payment) -> PaymentResponse:
@@ -118,6 +219,7 @@ def record_payment(
             target_installment_number=payload.emi_installment_number,
             allow_overpayment=payload.allow_overpayment,
         )
+        notify_payment_received_safely(db, payment)
         return build_payment_response(db, payment)
 
     customer_id = payload.customer_id
@@ -205,8 +307,22 @@ def record_payment(
         else:
             invoice.payment_status = "unpaid"
 
+    log_audit_event(
+        db=db,
+        event_type="payment.recorded",
+        description=f"Payment recorded: ₹{payment.amount} via {payment.method}.",
+        actor_id=current_staff.id if current_staff else None,
+        actor_type="staff",
+        actor_email=current_staff.email if current_staff else None,
+        resource_type="payment",
+        resource_id=str(payment.id),
+        details={"amount": str(payment.amount), "method": payment.method, "invoice_id": str(payment.invoice_id) if payment.invoice_id else None},
+    )
+
     db.commit()
     db.refresh(payment)
+
+    notify_payment_received_safely(db, payment)
 
     return build_payment_response(db, payment)
 

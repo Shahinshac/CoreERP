@@ -1,0 +1,61 @@
+name: Scheduled Automation Jobs
+
+on:
+  schedule:
+    # Daily at 04:00 UTC (09:30 AM IST): EMI transitions, Warranty alerts, Salary reminders, Storage audit
+    - cron: '0 4 * * *'
+    # Business hours (03:00, 07:00, 11:00, 15:00 UTC): Low stock checks
+    - cron: '0 3,7,11,15 * * *'
+  workflow_dispatch:
+    inputs:
+      job_target:
+        description: 'Specific job to trigger (run-all, low-stock, emi-due-overdue, emi-default, warranty-expiring, salary-reminder, orphaned-storage-cleanup)'
+        required: true
+        default: 'run-all'
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Secrets
+        run: |
+          if [ -z "${{ secrets.BACKEND_URL }}" ]; then
+            echo "::error::BACKEND_URL secret is missing."
+            exit 1
+          fi
+          if [ -z "${{ secrets.AUTOMATION_KEY }}" ]; then
+            echo "::error::AUTOMATION_KEY secret is missing."
+            exit 1
+          fi
+
+      - name: Trigger Automated Job
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}
+          TARGET: ${{ github.event.inputs.job_target || 'run-all' }}
+        run: |
+          ENDPOINT="${BACKEND_URL}/api/automation/jobs/${TARGET}"
+          echo "Triggering automation endpoint: ${ENDPOINT}"
+
+          HTTP_RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${ENDPOINT}" \
+            -H "Content-Type: application/json" \
+            -H "X-Automation-Key: ${AUTOMATION_KEY}")
+
+          HTTP_BODY=$(echo "${HTTP_RESPONSE}" | sed '$d')
+          HTTP_STATUS=$(echo "${HTTP_RESPONSE}" | tail -n 1)
+
+          echo "Response HTTP Status: ${HTTP_STATUS}"
+          echo "Response Payload: ${HTTP_BODY}"
+
+          if [ "${HTTP_STATUS}" -ne 200 ]; then
+            echo "::error::Automation job failed with HTTP status ${HTTP_STATUS}"
+            exit 1
+          fi
+
+      - name: Check Status Observability
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          AUTOMATION_KEY: ${{ secrets.AUTOMATION_KEY }}
+        run: |
+          curl -s -f -X GET "${BACKEND_URL}/api/automation/jobs/status" \
+            -H "X-Automation-Key: ${AUTOMATION_KEY}" | jq .

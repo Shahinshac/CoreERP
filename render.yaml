@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: erp-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AUTOMATION_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: billing@myretailstore.com
+      - key: EMAIL_FROM_NAME
+        value: My Retail Store
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: SELLER_NAME
+        value: My Retail Store Pvt Ltd
+      - key: SELLER_GSTIN
+        value: 27ABCDE1234F1Z5
+      - key: SELLER_STATE
+        value: Maharashtra
+      - key: SELLER_STATE_CODE
+        value: "27"
+      - key: SELLER_ADDRESS
+        value: 123 Commercial Hub, MG Road, Mumbai, Maharashtra 400001
+      - key: SELLER_PHONE
+        value: "+91 9876543210"
+      - key: SELLER_EMAIL
+        value: billing@myretailstore.com
+      - key: SELLER_UPI_ID
+        value: retailstore@upi
+      - key: SELLER_UPI_NAME
+        value: My Retail Store

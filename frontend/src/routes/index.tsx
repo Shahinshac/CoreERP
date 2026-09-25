@@ -3,18 +3,8 @@ import { createBrowserRouter } from "react-router-dom"
 import { StaffRouteGuard, CustomerRouteGuard } from "@/features/auth/RouteGuards"
 import { StaffShell } from "@/components/layout/StaffShell"
 import { CustomerShell } from "@/components/layout/CustomerShell"
-import {
-  CreditCard,
-  FileText,
-  HelpCircle,
-  RotateCcw,
-  ShieldCheck,
-  ShoppingBag,
-  TrendingUp,
-} from "lucide-react"
 
 // Lazy loaded page chunks for modular code splitting
-const HomePage = React.lazy(() => import("./Home").then((m) => ({ default: m.HomePage })))
 const StaffLoginPage = React.lazy(() =>
   import("./auth/StaffLogin").then((m) => ({ default: m.StaffLoginPage }))
 )
@@ -29,12 +19,6 @@ const StaffDashboard = React.lazy(() =>
 )
 const CustomerDashboard = React.lazy(() =>
   import("./CustomerDashboard").then((m) => ({ default: m.CustomerDashboard }))
-)
-const ModulePlaceholder = React.lazy(() =>
-  import("./ModulePlaceholder").then((m) => ({ default: m.ModulePlaceholder }))
-)
-const CustomerModulePlaceholder = React.lazy(() =>
-  import("./CustomerModulePlaceholder").then((m) => ({ default: m.CustomerModulePlaceholder }))
 )
 
 // Real Functional Modules
@@ -51,6 +35,20 @@ const EmiDetailPage = React.lazy(() => import("./staff/EmiDetailPage"))
 const StaffManagementPage = React.lazy(() => import("./staff/StaffManagementPage"))
 const SalaryRecordsPage = React.lazy(() => import("./staff/SalaryRecordsPage"))
 const ExpensesPage = React.lazy(() => import("./staff/ExpensesPage"))
+const ReportsPage = React.lazy(() => import("./staff/ReportsPage"))
+const WarrantiesPage = React.lazy(() => import("./staff/WarrantiesPage"))
+const TicketsPage = React.lazy(() => import("./staff/TicketsPage"))
+const AuditLogsPage = React.lazy(() => import("./staff/AuditLogsPage"))
+
+// Customer Portal Modules
+const CustomerPurchasesPage = React.lazy(() => import("./portal/CustomerPurchasesPage"))
+const CustomerInvoicesPage = React.lazy(() => import("./portal/CustomerInvoicesPage"))
+const CustomerInvoiceDetailPage = React.lazy(() => import("./portal/CustomerInvoiceDetailPage"))
+const CustomerPaymentsPage = React.lazy(() => import("./portal/CustomerPaymentsPage"))
+const CustomerEmiPage = React.lazy(() => import("./portal/CustomerEmiPage"))
+const CustomerProfilePage = React.lazy(() => import("./portal/CustomerProfilePage"))
+const CustomerWarrantyPage = React.lazy(() => import("./portal/CustomerWarrantyPage"))
+const CustomerSupportPage = React.lazy(() => import("./portal/CustomerSupportPage"))
 
 // Fallback spinner / skeleton
 const PageLoadingFallback = () => (
@@ -74,7 +72,7 @@ export const router = createBrowserRouter([
   // Public Routes
   {
     path: "/",
-    element: withSuspense(<HomePage />),
+    element: withSuspense(<CustomerLoginPage />),
   },
   {
     path: "/staff/login",
@@ -219,30 +217,40 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Accountant"]}>
         <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Reports"
-              description="Financial analytics and operational auditing"
-              icon={TrendingUp}
-            />
-          )}
+          {withSuspense(<ReportsPage />)}
         </StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/warranties",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
+        <StaffShell>{withSuspense(<WarrantiesPage />)}</StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/tickets",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
+        <StaffShell>{withSuspense(<TicketsPage />)}</StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/audit-logs",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin"]}>
+        <StaffShell>{withSuspense(<AuditLogsPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },
   {
     path: "/staff/support",
     element: (
-      <StaffRouteGuard>
-        <StaffShell>
-          {withSuspense(
-            <ModulePlaceholder
-              name="Support"
-              description="Customer issue tickets and escalations"
-              icon={HelpCircle}
-            />
-          )}
-        </StaffShell>
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin", "Manager", "Staff"]}>
+        <StaffShell>{withSuspense(<TicketsPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },
@@ -260,15 +268,7 @@ export const router = createBrowserRouter([
     path: "/portal/purchases",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="Purchases"
-              description="View orders and purchase history"
-              icon={ShoppingBag}
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerPurchasesPage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -276,15 +276,15 @@ export const router = createBrowserRouter([
     path: "/portal/invoices",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="Invoices"
-              description="Download VAT/GST invoices and receipts"
-              icon={FileText}
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerInvoicesPage />)}</CustomerShell>
+      </CustomerRouteGuard>
+    ),
+  },
+  {
+    path: "/portal/invoices/:id",
+    element: (
+      <CustomerRouteGuard>
+        <CustomerShell>{withSuspense(<CustomerInvoiceDetailPage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -292,15 +292,7 @@ export const router = createBrowserRouter([
     path: "/portal/payments",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="Payments"
-              description="Payment history and receipts"
-              icon={CreditCard}
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerPaymentsPage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -308,15 +300,7 @@ export const router = createBrowserRouter([
     path: "/portal/emi",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="EMI"
-              description="EMI schedule and upcoming installments"
-              icon={RotateCcw}
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerEmiPage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -324,15 +308,7 @@ export const router = createBrowserRouter([
     path: "/portal/warranty",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="Warranty"
-              description="Product warranty registration and coverage"
-              icon={ShieldCheck}
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerWarrantyPage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -340,15 +316,7 @@ export const router = createBrowserRouter([
     path: "/portal/support",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="Support"
-              description="Customer support requests and inquiries"
-              icon={HelpCircle}
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerSupportPage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },
@@ -356,14 +324,7 @@ export const router = createBrowserRouter([
     path: "/portal/profile",
     element: (
       <CustomerRouteGuard>
-        <CustomerShell>
-          {withSuspense(
-            <CustomerModulePlaceholder
-              name="Profile"
-              description="Account preferences and contact details"
-            />
-          )}
-        </CustomerShell>
+        <CustomerShell>{withSuspense(<CustomerProfilePage />)}</CustomerShell>
       </CustomerRouteGuard>
     ),
   },

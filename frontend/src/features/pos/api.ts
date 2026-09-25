@@ -25,11 +25,17 @@ export interface CartItemInput {
   discount_amount?: string
 }
 
+export interface SplitPaymentPortion {
+  method: "cash" | "upi" | "card" | string
+  amount: string
+}
+
 export interface POSCheckoutPayload {
   customer_id?: string | null
   items: CartItemInput[]
   discount_amount?: string
   payment_method?: string
+  split_payments?: SplitPaymentPortion[]
   notes?: string
   client_total?: string
 }
@@ -60,6 +66,7 @@ export interface Sale {
   total_amount: string
   status: string
   payment_method: string
+  payment_details?: SplitPaymentPortion[] | null
   notes?: string | null
   items: SaleItem[]
 }
@@ -97,9 +104,23 @@ export interface SaleReturn {
   items: ReturnItem[]
 }
 
+export interface POSStoreInfo {
+  store_name: string
+  gstin: string
+  state: string
+  state_code: string | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  upi_id: string | null
+}
+
 export const posApi = {
   searchProducts: (q: string) =>
     apiClient.get<POSProduct[]>(`/api/pos/products/search?q=${encodeURIComponent(q)}`),
+
+  lookupBarcode: (barcode: string) =>
+    apiClient.get<POSProduct>(`/api/pos/products/barcode?barcode=${encodeURIComponent(barcode)}`),
 
   checkout: (payload: POSCheckoutPayload) =>
     apiClient.post<Sale>("/api/pos/checkout", payload),
@@ -117,4 +138,7 @@ export const posApi = {
 
   getSale: (idOrNumber: string) =>
     apiClient.get<Sale>(`/api/pos/sales/${encodeURIComponent(idOrNumber)}`),
+
+  getStoreInfo: () =>
+    apiClient.get<POSStoreInfo>("/api/pos/store-info"),
 }

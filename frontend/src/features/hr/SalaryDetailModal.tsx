@@ -26,19 +26,19 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-white/[0.14] bg-[#0C0C0E]">
         <DialogHeader>
           <div className="flex items-center justify-between pr-6">
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-              <FileText className="w-5 h-5 text-indigo-600" />
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold text-zinc-100">
+              <FileText className="w-5 h-5 text-primary" />
               Salary Record Breakdown
             </DialogTitle>
             <Badge
               variant={isPaid ? "default" : "secondary"}
               className={`px-2.5 py-1 text-xs font-semibold uppercase tracking-wider flex items-center gap-1 ${
                 isPaid
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-                  : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                  ? "bg-emerald-950/40 text-emerald-400 border border-emerald-500/30"
+                  : "bg-amber-950/40 text-amber-400 border border-amber-500/30"
               }`}
             >
               {isPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
@@ -49,30 +49,30 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
 
         <div className="space-y-6 pt-2">
           {/* Employee & Period Banner */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="p-4 bg-[#0A0A0C] border border-white/[0.14] rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider">Employee</span>
-              <div className="font-bold text-slate-900 dark:text-slate-100 text-base">
+              <span className="text-xs text-zinc-400 uppercase tracking-wider">Employee</span>
+              <div className="font-bold text-zinc-100 text-base">
                 {record.staff_name || record.staff_email}
               </div>
-              <div className="text-xs text-slate-500">{record.staff_email}</div>
+              <div className="text-xs text-zinc-400">{record.staff_email}</div>
               {record.employee_code && (
-                <div className="text-xs font-mono text-indigo-600 dark:text-indigo-400 mt-0.5">
+                <div className="text-xs font-mono text-primary mt-0.5">
                   Code: {record.employee_code}
                 </div>
               )}
             </div>
 
             <div>
-              <span className="text-xs text-slate-500 uppercase tracking-wider">Payroll Period</span>
-              <div className="font-bold text-slate-900 dark:text-slate-100 text-base font-mono">
+              <span className="text-xs text-zinc-400 uppercase tracking-wider">Payroll Period</span>
+              <div className="font-bold text-zinc-100 text-base font-mono">
                 {record.period}
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-zinc-400">
                 Generated: {new Date(record.generated_at).toLocaleString("en-IN")}
               </div>
               {record.notes && (
-                <div className="text-xs text-amber-600 dark:text-amber-400 mt-1 italic">
+                <div className="text-xs text-amber-400 mt-1 italic">
                   Note: {record.notes}
                 </div>
               )}
@@ -81,47 +81,47 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
 
           {/* Financial Breakdown */}
           <div className="space-y-3">
-            <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-indigo-600" />
+            <h4 className="font-semibold text-sm text-zinc-100 flex items-center gap-1.5">
+              <DollarSign className="w-4 h-4 text-primary" />
               Snapshotted Earnings & Deductions
             </h4>
 
-            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
-              <div className="p-3 bg-white dark:bg-slate-900 flex justify-between items-center border-b border-slate-100 dark:border-slate-800">
-                <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+            <div className="border border-white/[0.14] rounded-xl overflow-hidden">
+              <div className="p-3 bg-white/[0.02] flex justify-between items-center border-b border-white/[0.08]">
+                <span className="text-sm text-zinc-300 font-medium">
                   Base Salary (Snapshotted):
                 </span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                <span className="font-semibold text-zinc-100 font-mono">
                   ₹{parseFloat(record.base_salary).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
               {/* Deductions breakdown table */}
-              <div className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 space-y-2">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <div className="p-3 bg-black/40 border-b border-white/[0.08] space-y-2">
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                   Itemized Deductions:
                 </span>
                 {record.deductions.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">No deductions applied for this run.</p>
+                  <p className="text-xs text-zinc-500 italic">No deductions applied for this run.</p>
                 ) : (
                   <div className="space-y-1.5 pt-1">
                     {record.deductions.map((d, i) => (
                       <div key={i} className="flex justify-between items-center text-xs sm:text-sm">
-                        <span className="text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                        <span className="text-zinc-300 flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                           <span>{d.name}</span>
-                          <span className="text-slate-400 text-xs">
+                          <span className="text-zinc-500 text-xs">
                             ({d.type === "percentage" ? `${d.value}%` : `₹${d.value}`})
                           </span>
                         </span>
-                        <span className="font-mono text-rose-600 dark:text-rose-400">
+                        <span className="font-mono text-rose-400">
                           -₹{parseFloat(d.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                     ))}
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center font-medium text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+                    <div className="pt-2 border-t border-white/[0.08] flex justify-between items-center font-medium text-xs sm:text-sm text-zinc-200">
                       <span>Total Deductions:</span>
-                      <span className="font-mono text-rose-600 dark:text-rose-400 font-semibold">
+                      <span className="font-mono text-rose-400 font-semibold">
                         -₹{parseFloat(record.total_deductions).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
@@ -130,14 +130,14 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
               </div>
 
               {/* Net Payout Total Row */}
-              <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/40 flex justify-between items-center">
+              <div className="p-4 bg-emerald-950/30 border-t border-emerald-500/20 flex justify-between items-center">
                 <div>
-                  <span className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base">
+                  <span className="font-bold text-zinc-100 text-sm sm:text-base">
                     Net Take-Home Salary:
                   </span>
-                  <p className="text-xs text-slate-500">Immutable final amount payable</p>
+                  <p className="text-xs text-zinc-400">Immutable final amount payable</p>
                 </div>
-                <span className="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                <span className="text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono">
                   ₹{parseFloat(record.net_salary).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -146,26 +146,26 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
 
           {/* Audit & Settlement Records (if Paid) */}
           {isPaid && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2 text-xs">
-              <h5 className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Receipt className="w-3.5 h-3.5 text-indigo-500" /> Linked Settlement Audit
+            <div className="p-4 bg-[#0A0A0C] border border-white/[0.14] rounded-xl space-y-2 text-xs">
+              <h5 className="font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Receipt className="w-3.5 h-3.5 text-primary" /> Linked Settlement Audit
               </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-600 dark:text-slate-400 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-zinc-400 pt-1">
                 <div>
-                  <span className="text-slate-400">Paid At: </span>
-                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                  <span className="text-zinc-500">Paid At: </span>
+                  <span className="font-medium text-zinc-200">
                     {record.paid_at ? new Date(record.paid_at).toLocaleString("en-IN") : "N/A"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400">Payment Ledger ID: </span>
-                  <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                  <span className="text-zinc-500">Payment Ledger ID: </span>
+                  <span className="font-mono text-primary">
                     {record.payment_id ? record.payment_id.slice(0, 8) + "..." : "None"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400">Finance Expense ID: </span>
-                  <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                  <span className="text-zinc-500">Finance Expense ID: </span>
+                  <span className="font-mono text-primary">
                     {record.expense_id ? record.expense_id.slice(0, 8) + "..." : "None"}
                   </span>
                 </div>
@@ -174,8 +174,8 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
           )}
         </div>
 
-        <DialogFooter className="gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 pt-2 border-t border-white/[0.08]">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/[0.16] text-zinc-300 hover:bg-[#18181C]">
             Close
           </Button>
           {!isPaid && canPay && (
@@ -185,7 +185,7 @@ export const SalaryDetailModal: React.FC<SalaryDetailModalProps> = ({
                 onOpenChange(false)
                 onPayClick(record)
               }}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium gap-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
               Mark as Paid

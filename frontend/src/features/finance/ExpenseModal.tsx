@@ -98,20 +98,20 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-[#0C0C0E] border-white/[0.14] text-[#F5F5F7]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <Receipt className="w-5 h-5 text-indigo-600" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-bold text-[#F5F5F7]">
+            <Receipt className="w-5 h-5 text-primary" />
             {isEdit ? "Edit Manual Expense" : "Record New Expense"}
           </DialogTitle>
         </DialogHeader>
 
         {isSystemSalary ? (
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg text-sm text-amber-800 dark:text-amber-200 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm text-amber-300 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
             <div>
-              <p className="font-semibold">System-Sourced Salary Expense</p>
-              <p className="text-xs mt-1">
+              <p className="font-semibold text-amber-200">System-Sourced Salary Expense</p>
+              <p className="text-xs text-amber-300/80 mt-1 leading-relaxed">
                 This expense was automatically recorded during payroll execution in Phase 10.
                 System-generated salary expenses are strictly immutable and cannot be manually modified.
               </p>
@@ -120,16 +120,16 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <Label htmlFor="category">Expense Category *</Label>
+              <Label htmlFor="category" className="text-[#C4C4C8]">Expense Category *</Label>
               <select
                 id="category"
-                className="w-full h-10 px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-10 px-3 py-2 text-sm bg-[#0A0A0C] border border-white/[0.16] text-[#F5F5F7] rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
                 required
               >
                 {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                  <option key={opt.value} value={opt.value} className="bg-[#0C0C0E] text-[#F5F5F7]">
                     {opt.label}
                   </option>
                 ))}
@@ -137,7 +137,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="amount">Amount (₹) *</Label>
+              <Label htmlFor="amount" className="text-[#C4C4C8]">Amount (₹) *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -151,7 +151,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="date">Expense Date *</Label>
+              <Label htmlFor="date" className="text-[#C4C4C8]">Expense Date *</Label>
               <Input
                 id="date"
                 type="date"
@@ -162,11 +162,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="description">Description / Notes</Label>
+              <Label htmlFor="description" className="text-[#C4C4C8]">Description / Notes</Label>
               <textarea
                 id="description"
                 rows={3}
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 text-sm bg-[#0A0A0C] border border-white/[0.16] text-[#F5F5F7] placeholder-[#94949C] rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="e.g. Monthly electricity bill for retail shop floor"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -185,7 +185,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="bg-primary hover:bg-primary/90 text-white font-medium"
               >
                 {isSubmitting ? "Saving..." : isEdit ? "Save Changes" : "Record Expense"}
               </Button>

@@ -44,6 +44,7 @@ class StaffUserResponse(BaseModel):
     email: str
     role: StaffRole
     is_active: bool
+    is_totp_enabled: bool = False
     created_at: datetime
 
 
@@ -59,9 +60,11 @@ class CustomerResponse(BaseModel):
 
 
 class StaffTokenResponse(BaseModel):
-    access_token: str
+    access_token: str | None = None
     token_type: str = "bearer"
-    user: StaffUserResponse
+    user: StaffUserResponse | None = None
+    requires_2fa: bool = False
+    temp_token: str | None = None
 
 
 class CustomerTokenResponse(BaseModel):
@@ -81,3 +84,39 @@ class ResetPasswordRequest(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class TwoFactorSetupResponse(BaseModel):
+    secret: str
+    otpauth_url: str
+    backup_codes: list[str]
+
+
+class TwoFactorVerifyRequest(BaseModel):
+    code: str = Field(..., min_length=6, max_length=16)
+
+
+class TwoFactorDisableRequest(BaseModel):
+    password: str = Field(..., min_length=6)
+
+
+class TwoFactorLoginRequest(BaseModel):
+    temp_token: str
+    code: str = Field(..., min_length=6, max_length=16)
+
+
+class StaffSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    user_agent: str | None = None
+    ip_address: str | None = None
+    created_at: datetime
+    last_active_at: datetime
+    expires_at: datetime
+    is_current: bool = False
+
+
+class StaffSessionListResponse(BaseModel):
+    sessions: list[StaffSessionResponse]
+

@@ -201,3 +201,112 @@ class CreditNoteItem(Base, UUIDPrimaryKeyMixin, CreatedAtMixin):
 
     credit_note: Mapped["CreditNote"] = relationship("CreditNote", back_populates="items")
     invoice_item = relationship("InvoiceItem")
+
+
+class Quotation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "quotations"
+
+    quotation_number: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    financial_year: Mapped[str] = mapped_column(String(10), index=True, nullable=False)
+    quotation_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    valid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("customers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    staff_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("staff_users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # Seller GST Snapshot
+    seller_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    seller_gstin: Mapped[str] = mapped_column(String(20), nullable=False)
+    seller_state: Mapped[str] = mapped_column(String(100), nullable=False)
+    seller_state_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    seller_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    seller_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Buyer Details Snapshot
+    buyer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    buyer_gstin: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    buyer_state: Mapped[str] = mapped_column(String(100), nullable=False)
+    buyer_state_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    buyer_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    buyer_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # GST Rules & Place of Supply
+    is_inter_state: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    place_of_supply: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Financial Breakdowns
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    cgst_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    sgst_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    igst_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    total_tax: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    grand_total: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+
+    # Status: draft, sent, converted, cancelled
+    status: Mapped[str] = mapped_column(String(50), default="draft", index=True, nullable=False)
+    converted_invoice_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("invoices.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Relationships
+    items: Mapped[list["QuotationItem"]] = relationship(
+        "QuotationItem",
+        back_populates="quotation",
+        cascade="all, delete-orphan",
+    )
+    customer = relationship("app.modules.auth.models.Customer")
+    staff = relationship("app.modules.auth.models.StaffUser")
+    converted_invoice: Mapped["Invoice | None"] = relationship(
+        "Invoice",
+        foreign_keys=[converted_invoice_id],
+    )
+
+
+class QuotationItem(Base, UUIDPrimaryKeyMixin, CreatedAtMixin):
+    __tablename__ = "quotation_items"
+
+    quotation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("quotations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    product_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    product_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    product_sku: Mapped[str] = mapped_column(String(100), nullable=False)
+    hsn_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    taxable_value: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    gst_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    cgst_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), nullable=False)
+    cgst_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    sgst_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), nullable=False)
+    sgst_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    igst_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("0.00"), nullable=False)
+    igst_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0.00"), nullable=False)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+
+    quotation: Mapped["Quotation"] = relationship("Quotation", back_populates="items")
+    product = relationship("app.modules.catalog.models.Product")
+

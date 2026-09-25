@@ -20,6 +20,7 @@ export interface Product {
   name: string
   sku: string
   barcode?: string | null
+  hsn_code?: string | null
   category_id: string
   brand_id: string
   unit: string
@@ -30,6 +31,7 @@ export interface Product {
   min_stock: string
   image_path?: string | null
   is_active: boolean
+  is_pinned?: boolean
   created_at: string
   updated_at: string
   category?: Category | null
@@ -40,6 +42,7 @@ export interface ProductCreatePayload {
   name: string
   sku: string
   barcode?: string | null
+  hsn_code?: string | null
   category_id: string
   brand_id: string
   unit?: string
@@ -47,12 +50,14 @@ export interface ProductCreatePayload {
   selling_price: string
   gst_rate?: string
   min_stock?: string
+  is_pinned?: boolean
 }
 
 export interface ProductUpdatePayload {
   name?: string
   sku?: string
   barcode?: string | null
+  hsn_code?: string | null
   category_id?: string
   brand_id?: string
   unit?: string
@@ -61,6 +66,7 @@ export interface ProductUpdatePayload {
   gst_rate?: string
   min_stock?: string
   is_active?: boolean
+  is_pinned?: boolean
 }
 
 export const catalogApi = {
@@ -86,6 +92,7 @@ export const catalogApi = {
     search?: string
     low_stock_only?: boolean
     is_active?: boolean
+    is_pinned?: boolean
   }) => {
     const query = new URLSearchParams()
     if (params?.category_id) query.append("category_id", params.category_id)
@@ -93,6 +100,7 @@ export const catalogApi = {
     if (params?.search) query.append("search", params.search)
     if (params?.low_stock_only) query.append("low_stock_only", "true")
     if (params?.is_active !== undefined) query.append("is_active", String(params.is_active))
+    if (params?.is_pinned !== undefined) query.append("is_pinned", String(params.is_pinned))
 
     const qs = query.toString()
     return apiClient.get<Product[]>(`/api/catalog/products${qs ? `?${qs}` : ""}`)
@@ -102,12 +110,46 @@ export const catalogApi = {
     apiClient.post<Product>("/api/catalog/products", data),
   updateProduct: (id: string, data: ProductUpdatePayload) =>
     apiClient.put<Product>(`/api/catalog/products/${id}`, data),
+  toggleProductPin: (id: string, is_pinned: boolean) =>
+    apiClient.patch<Product>(`/api/catalog/products/${id}/pin`, { is_pinned }),
   deleteProduct: (id: string) => apiClient.delete(`/api/catalog/products/${id}`),
 
-  // Image Upload
   uploadProductImage: (productId: string, file: File) => {
     const formData = new FormData()
     formData.append("file", file)
     return apiClient.upload<Product>(`/api/catalog/products/${productId}/image`, formData)
   },
+
+  // Bulk CSV Import
+  previewImport: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return apiClient.upload<ImportPreviewResponse>("/api/catalog/products/import/preview", formData)
+  },
+  confirmImport: (file: File) => {
+    const formData = new FormData()
+    formData.append("file", file)
+    return apiClient.upload<ImportConfirmResponse>("/api/catalog/products/import/confirm", formData)
+  },
+}
+
+export interface RowImportResult {
+  row_number: number
+  data: Record<string, any>
+  is_valid: boolean
+  errors: string[]
+}
+
+export interface ImportPreviewResponse {
+  total_rows: number
+  valid_count: number
+  invalid_count: number
+  rows: RowImportResult[]
+}
+
+export interface ImportConfirmResponse {
+  total_processed: number
+  imported_count: number
+  skipped_count: number
+  results: RowImportResult[]
 }

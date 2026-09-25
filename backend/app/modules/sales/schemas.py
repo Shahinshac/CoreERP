@@ -31,11 +31,41 @@ class CartItemInput(BaseModel):
         return validate_money_decimal(v, allow_negative=False, field_name="Item discount")
 
 
+class SplitPaymentPortion(BaseModel):
+    method: str
+    amount: Decimal
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def validate_portion_amount(cls, v):
+        amt = validate_money_decimal(v, allow_negative=False, field_name="Payment portion amount")
+        if amt <= Decimal("0.00"):
+            raise ValueError("Payment portion amount must be strictly greater than 0.00.")
+        return amt
+
+    @field_validator("method")
+    @classmethod
+    def validate_method(cls, v: str):
+        allowed = {"cash", "upi", "card"}
+        m = v.strip().lower()
+        if m not in allowed:
+            raise ValueError(f"Invalid payment method '{v}'. Supported methods: cash, upi, card.")
+        return m
+
+
+class SplitPaymentDetail(BaseModel):
+    method: str
+    amount: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class POSCheckoutRequest(BaseModel):
     customer_id: uuid.UUID | None = None
     items: list[CartItemInput]
     discount_amount: Decimal = Decimal("0.00")
     payment_method: str = "cash"
+    split_payments: list[SplitPaymentPortion] | None = None
     notes: str | None = None
     client_total: Decimal | None = None  # Ignored by server; server always recalculates
 
@@ -82,6 +112,7 @@ class SaleResponse(BaseModel):
     total_amount: Decimal
     status: str
     payment_method: str
+    payment_details: list[SplitPaymentDetail] | None = None
     notes: str | None
     items: list[SaleItemResponse]
 
@@ -140,5 +171,20 @@ class SaleReturnResponse(BaseModel):
     total_refund_amount: Decimal
     reason: str | None
     items: list[ReturnItemResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class POSProductResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    sku: str
+    barcode: str | None = None
+    unit: str = "pcs"
+    selling_price: Decimal
+    gst_rate: Decimal
+    current_stock: Decimal
+    min_stock: Decimal
+    image_path: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

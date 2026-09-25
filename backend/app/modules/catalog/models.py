@@ -1,6 +1,6 @@
 import uuid
 from decimal import Decimal
-from sqlalchemy import CheckConstraint, ForeignKey, Numeric, String, Text, Uuid
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -32,6 +32,14 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     barcode: Mapped[str | None] = mapped_column(String(100), unique=True, index=True, nullable=True)
     hsn_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    image_public_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+        index=True,
+    )
 
     category_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
