@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   AlertCircle,
@@ -16,7 +16,10 @@ import {
   ShoppingCart,
   Trash2,
   User,
+  UserCheck,
+  UserPlus,
   Vault,
+  X,
   Zap,
   Layers,
 } from "lucide-react"
@@ -35,14 +38,19 @@ import { NumericInput } from "@/components/ui/numeric-input"
 import { CartItem, posApi, POSProduct, Sale, SplitPaymentPortion } from "@/features/pos/api"
 import { catalogApi } from "@/features/catalog/api"
 import { customersApi } from "@/features/customers/api"
+import { CustomerDialog } from "@/features/customers/CustomerDialog"
+import { Invoice, invoicingApi } from "@/features/invoicing/api"
 import { ReceiptModal } from "@/features/pos/ReceiptModal"
 import { CashDrawerModal } from "@/features/pos/CashDrawerModal"
 import { cashDrawerApi } from "@/features/pos/cashDrawerApi"
 
 export function POSPage() {
+  const queryClient = useQueryClient()
   const [productSearch, setProductSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState("")
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false)
+  const [completedInvoice, setCompletedInvoice] = useState<Invoice | null>(null)
   const [paymentMethod, setPaymentMethod] = useState("cash")
   const [splitPortions, setSplitPortions] = useState<SplitPaymentPortion[]>([
     { method: "cash", amount: "" },
@@ -380,6 +388,7 @@ export function POSPage() {
 
     setIsCheckingOut(true)
     try {
+      const selectedCust = customers.find((c) => c.id === selectedCustomerId)
       const sale = await posApi.checkout({
         customer_id: selectedCustomerId || null,
         items: cart.map((i) => ({
@@ -399,7 +408,26 @@ export function POSPage() {
         client_total: grandTotal.toFixed(2),
       })
 
-      toast.success(`Checkout complete! Invoice: ${sale.invoice_number}`)
+      // Automatically generate authoritative GST Tax Invoice & send email upon sale completion
+      let inv: Invoice | null = null
+      try {
+        inv = await invoicingApi.generateFromSale(sale.id, {
+          buyer_name: selectedCust?.name,
+          buyer_gstin: selectedCust?.gstin || undefined,
+          buyer_state: selectedCust?.state || undefined,
+          buyer_address: selectedCust?.address || undefined,
+        })
+        setCompletedInvoice(inv)
+        if (selectedCust?.email) {
+          toast.success(`Tax Invoice ${inv.invoice_number} created & emailed to ${selectedCust.email}!`)
+        } else {
+          toast.success(`Tax Invoice ${inv.invoice_number} created!`)
+        }
+      } catch (invErr) {
+        console.warn("Invoice auto-generation error:", invErr)
+        toast.success(`Checkout complete! Invoice: ${sale.invoice_number}`)
+      }
+
       setCompletedSale(sale)
       setReceiptOpen(true)
       refetchDrawer()
@@ -733,23 +761,65 @@ export function POSPage() {
               )}
             </div>
 
-            {/* Customer Picker */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-zinc-300 flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-zinc-400" />
-                Select Customer (Optional)
-              </label>
-              <Select
-                value={selectedCustomerId}
-                onChange={(e) => setSelectedCustomerId(e.target.value)}
-              >
-                <option value="">Walk-in Customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.email})
-                  </option>
-                ))}
-              </Select>
+            {/* Customer Picker with Quick-Add */}
+            <div className="space-y-1.5 bg-zinc-900/60 p-2.5 rounded-xl border border-white/[0.08]">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                  <User className="h-3.5 w-3.5 text-primary" />
+                  Customer Account
+                </label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsCustomerDialogOpen(true)}
+                  className="h-6 px-2 text-[11px] text-primary hover:text-primary-foreground hover:bg-primary/20 gap-1 font-semibold"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  + Add Customer
+                </Button>
+              </div>
+
+              {selectedCustomerId ? (
+                (() => {
+                  const cust = customers.find((c) => c.id === selectedCustomerId)
+                  return (
+                    <div className="flex items-center justify-between bg-zinc-950 px-2.5 py-1.5 rounded-lg border border-primary/30 text-xs">
+                      <div className="space-y-0.5 truncate pr-2">
+                        <div className="font-bold text-zinc-100 flex items-center gap-1.5 truncate">
+                          <UserCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                          <span className="truncate">{cust?.name || "Selected Customer"}</span>
+                        </div>
+                        <div className="text-[10px] text-zinc-400 truncate">
+                          {cust?.phone && <span className="mr-2 font-mono text-zinc-300">{cust.phone}</span>}
+                          <span>{cust?.email}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCustomerId("")}
+                        className="text-zinc-500 hover:text-rose-400 p-1 rounded transition-colors"
+                        title="Remove customer / switch to walk-in"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )
+                })()
+              ) : (
+                <Select
+                  value={selectedCustomerId}
+                  onChange={(e) => setSelectedCustomerId(e.target.value)}
+                  className="w-full h-8 text-xs bg-black border-white/[0.14]"
+                >
+                  <option value="">Walk-in Customer (Unregistered)</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.phone ? `(${c.phone})` : ""} - {c.email}
+                    </option>
+                  ))}
+                </Select>
+              )}
             </div>
 
             {/* Cart Items List */}
@@ -1017,12 +1087,32 @@ export function POSPage() {
         </div>
       </div>
 
-      {/* Printable Receipt Modal */}
+      {/* Printable Receipt Modal with A4 Tax Invoice Support */}
       <ReceiptModal
         open={receiptOpen}
-        onOpenChange={setReceiptOpen}
+        onOpenChange={(val) => {
+          setReceiptOpen(val)
+          if (!val) setCompletedInvoice(null)
+        }}
         sale={completedSale}
-        customerPhone={customers.find((c) => c.id === selectedCustomerId)?.phone}
+        initialInvoice={completedInvoice}
+        customer={customers.find((c) => c.id === (completedSale?.customer_id || selectedCustomerId)) || null}
+        customerPhone={customers.find((c) => c.id === (completedSale?.customer_id || selectedCustomerId))?.phone}
+        customerGstin={customers.find((c) => c.id === (completedSale?.customer_id || selectedCustomerId))?.gstin}
+      />
+
+      {/* Customer Quick-Add Dialog */}
+      <CustomerDialog
+        open={isCustomerDialogOpen}
+        onOpenChange={setIsCustomerDialogOpen}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["pos-customers-list"] })
+        }}
+        onCustomerCreated={(newCust) => {
+          queryClient.invalidateQueries({ queryKey: ["pos-customers-list"] })
+          setSelectedCustomerId(newCust.id)
+          toast.success(`Customer "${newCust.name}" registered & selected!`)
+        }}
       />
 
       {/* Cash Drawer Reconciliation Modal */}

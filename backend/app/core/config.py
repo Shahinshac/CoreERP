@@ -41,20 +41,20 @@ class Settings(BaseSettings):
     CLOUDINARY_API_SECRET: str = ""
 
     # Seller GST & Billing Configuration (Indian GST Statutory Defaults)
-    SELLER_NAME: str = "My Retail Store Pvt Ltd"
-    SELLER_GSTIN: str = "27ABCDE1234F1Z5"
+    SELLER_NAME: str = "SHAHIN SHA"
+    SELLER_GSTIN: str = "32ABCDE1234F1Z5"
     SELLER_STATE: str = "Maharashtra"
     SELLER_STATE_CODE: str = "27"
-    SELLER_ADDRESS: str = "123 Commercial Hub, MG Road, Mumbai, Maharashtra 400001"
-    SELLER_PHONE: str = "+91 9876543210"
-    SELLER_EMAIL: str = "billing@myretailstore.com"
+    SELLER_ADDRESS: str = "Malappuram, Kerala, India - 676505"
+    SELLER_PHONE: str = "7594012761"
+    SELLER_EMAIL: str = "shaahnpvt7@gmail.com"
     SELLER_UPI_ID: str = "retailstore@upi"
-    SELLER_UPI_NAME: str = "My Retail Store"
+    SELLER_UPI_NAME: str = "SHAHIN SHA"
 
     # Brevo Transactional Email Configuration (Free-tier HTTP API)
     BREVO_API_KEY: str = ""
-    EMAIL_FROM: str = "no-reply@myretailstore.com"
-    EMAIL_FROM_NAME: str = "My Retail Store"
+    EMAIL_FROM: str = "shaahnpvt7@gmail.com"
+    EMAIL_FROM_NAME: str = "SHAHIN SHA"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

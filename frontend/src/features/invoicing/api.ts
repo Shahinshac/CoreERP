@@ -176,6 +176,11 @@ export const invoicingApi = {
   createCreditNote: async (id: string, payload: CreditNoteCreateRequest): Promise<CreditNote> => {
     return apiClient.post<CreditNote>(`/api/invoicing/${id}/credit-note`, payload)
   },
+
+  sendEmail: async (id: string, email?: string): Promise<{ status: string; message: string }> => {
+    const q = email ? `?email=${encodeURIComponent(email)}` : ""
+    return apiClient.post<{ status: string; message: string }>(`/api/invoicing/${id}/send-email${q}`, {})
+  },
 }
 
 export interface QuotationItem {

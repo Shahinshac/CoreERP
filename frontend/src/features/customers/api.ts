@@ -15,6 +15,8 @@ export interface Customer {
   email: string
   phone?: string | null
   address?: string | null
+  gstin?: string | null
+  state?: string | null
   is_active: boolean
   created_at: string
   updated_at: string
@@ -26,6 +28,8 @@ export interface CustomerCreatePayload {
   email: string
   phone?: string
   address?: string
+  gstin?: string
+  state?: string
   password?: string
 }
 
@@ -33,6 +37,8 @@ export interface CustomerUpdatePayload {
   name?: string
   phone?: string
   address?: string
+  gstin?: string
+  state?: string
   is_active?: boolean
 }
 

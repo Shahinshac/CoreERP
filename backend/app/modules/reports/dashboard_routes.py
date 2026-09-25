@@ -40,10 +40,13 @@ def get_today_summary(
     if _CACHE["data"] is not None and now_ts < _CACHE["expires_at"]:
         return _CACHE["data"]
 
-    # Local date bounds for today
+    # Date bounds for today (spanning local and UTC current date)
     today = date.today()
-    start_dt = datetime(today.year, today.month, today.day, 0, 0, 0)
-    end_dt = datetime(today.year, today.month, today.day, 23, 59, 59, 999999)
+    now_utc = datetime.utcnow()
+    min_date = min(today, now_utc.date())
+    max_date = max(today, now_utc.date())
+    start_dt = datetime(min_date.year, min_date.month, min_date.day, 0, 0, 0)
+    end_dt = datetime(max_date.year, max_date.month, max_date.day, 23, 59, 59, 999999)
 
     # 1. Total Sales & Customers Served
     sales = (

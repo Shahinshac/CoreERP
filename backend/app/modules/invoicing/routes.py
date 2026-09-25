@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
@@ -6,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
+
+logger = logging.getLogger("app.invoicing.routes")
 
 from app.core.config import settings
 from app.core.db import get_db
@@ -67,6 +70,13 @@ def get_next_sequence_number(db: Session, fy: str, seq_type: str = "INV") -> int
     return seq.last_number
 
 
+from app.modules.invoicing.service import (
+    generate_invoice_for_sale,
+    get_next_sequence_number,
+    send_invoice_email,
+)
+
+
 @router.post(
     "/from-sale/{sale_id}",
     response_model=InvoiceResponse,
@@ -82,21 +92,9 @@ def create_invoice_from_sale(
     """
     Finalizes a POS sale into a formal, immutable GST Tax Invoice.
     Generates a sequential, gapless invoice number per financial year inside the same transaction.
+    Automatically dispatches the tax invoice email to the customer if an email is on record.
     """
-    # 1. Fetch sale with line items
-    sale = db.execute(
-        select(Sale)
-        .options(selectinload(Sale.items), selectinload(Sale.customer))
-        .filter(Sale.id == sale_id)
-    ).scalar_one_or_none()
-
-    if not sale:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Sale {sale_id} not found",
-        )
-
-    # 2. Check if invoice already exists for this sale
+    # Check if invoice already exists for this sale
     existing_inv = db.execute(
         select(Invoice).filter(Invoice.sale_id == sale_id)
     ).scalar_one_or_none()
@@ -106,138 +104,20 @@ def create_invoice_from_sale(
             detail=f"An invoice has already been generated for this sale ({existing_inv.invoice_number})",
         )
 
-    req_data = payload or GenerateInvoiceFromSaleRequest()
-
-    # 3. Determine Financial Year & Generate Gapless Sequential Number
-    sale_dt = sale.created_at if sale.created_at else datetime.utcnow()
-    fy = get_financial_year(sale_dt)
-    next_num = get_next_sequence_number(db, fy, "INV")
-    invoice_number = f"INV/{fy}/{next_num:05d}"
-
-    # 4. Resolve Buyer Details Snapshot
-    customer = sale.customer
-    buyer_name = req_data.buyer_name or (customer.name if customer else "Walk-in Customer")
-    buyer_gstin = req_data.buyer_gstin or (customer.gstin if customer and customer.gstin else None)
-    buyer_state = req_data.buyer_state or (customer.state if customer and customer.state else settings.SELLER_STATE)
-    buyer_address = req_data.buyer_address or (customer.address if customer and customer.address else None)
-    buyer_phone = customer.phone if customer else None
-
-    # Resolve State codes
-    norm_buyer = normalize_state(buyer_state)
-    buyer_state_code = CODE_BY_STATE_NAME.get(norm_buyer)
-
-    # 5. Place of supply logic
-    # Under Section 10(1)(c) of IGST Act 2017, place of supply for walk-in / counter sales is seller state
-    is_inter_state = bool(norm_buyer and norm_buyer != normalize_state(settings.SELLER_STATE))
-    place_of_supply = f"{buyer_state} ({buyer_state_code})" if buyer_state_code else buyer_state
-
-    # 6. Create Invoice record
-    invoice = Invoice(
-        invoice_number=invoice_number,
-        financial_year=fy,
-        invoice_date=sale_dt.date() if isinstance(sale_dt, datetime) else sale_dt,
-        sale_id=sale.id,
-        customer_id=sale.customer_id,
-        staff_id=current_staff.id,
-        seller_name=settings.SELLER_NAME,
-        seller_gstin=settings.SELLER_GSTIN,
-        seller_state=settings.SELLER_STATE,
-        seller_state_code=settings.SELLER_STATE_CODE,
-        seller_address=settings.SELLER_ADDRESS,
-        seller_phone=settings.SELLER_PHONE,
-        buyer_name=buyer_name,
-        buyer_gstin=buyer_gstin,
-        buyer_state=buyer_state,
-        buyer_state_code=buyer_state_code,
-        buyer_address=buyer_address,
-        buyer_phone=buyer_phone,
-        is_inter_state=is_inter_state,
-        place_of_supply=place_of_supply,
-        subtotal=Decimal("0.00"),
-        cgst_amount=Decimal("0.00"),
-        sgst_amount=Decimal("0.00"),
-        igst_amount=Decimal("0.00"),
-        total_tax=Decimal("0.00"),
-        grand_total=Decimal("0.00"),
-        payment_status="unpaid",  # Phase 8 wires real payment collection
-        is_cancelled=False,
-        notes=req_data.notes or sale.notes,
-    )
-    db.add(invoice)
-    db.flush()
-
-    # 7. Generate Line Items with authoritative GST breakdown
-    total_subtotal = Decimal("0.00")
-    total_cgst = Decimal("0.00")
-    total_sgst = Decimal("0.00")
-    total_igst = Decimal("0.00")
-
-    for s_item in sale.items:
-        # Fetch product to get accurate product name, SKU, HSN, and GST rate
-        product = db.execute(
-            select(Product).filter(Product.id == s_item.product_id)
-        ).scalar_one_or_none()
-
-        product_name = product.name if product else "Product Item"
-        product_sku = product.sku if product else "SKU-N/A"
-        hsn_code = getattr(product, "hsn_code", None)
-        gst_rate = product.gst_rate if product else Decimal("0.00")
-
-        # Taxable value = quantity * unit_price - discount
-        item_taxable = quantize_money((s_item.quantity * s_item.unit_price) - s_item.discount_amount)
-        if item_taxable < Decimal("0.00"):
-            item_taxable = Decimal("0.00")
-
-        gst_calc = compute_gst(settings.SELLER_STATE, buyer_state, item_taxable, gst_rate)
-
-        item_total = quantize_money(item_taxable + gst_calc["total_tax"])
-
-        inv_item = InvoiceItem(
-            invoice_id=invoice.id,
-            product_id=s_item.product_id,
-            product_name=product_name,
-            product_sku=product_sku,
-            hsn_code=hsn_code,
-            quantity=s_item.quantity,
-            unit_price=s_item.unit_price,
-            taxable_value=item_taxable,
-            gst_rate=gst_rate,
-            cgst_rate=gst_calc["cgst_rate"],
-            cgst_amount=gst_calc["cgst_amount"],
-            sgst_rate=gst_calc["sgst_rate"],
-            sgst_amount=gst_calc["sgst_amount"],
-            igst_rate=gst_calc["igst_rate"],
-            igst_amount=gst_calc["igst_amount"],
-            total_amount=item_total,
+    try:
+        invoice = generate_invoice_for_sale(
+            db=db,
+            sale_id=sale_id,
+            staff_id=current_staff.id,
+            staff_email=current_staff.email,
+            payload=payload,
+            auto_commit=True,
         )
-        db.add(inv_item)
-
-        total_subtotal += item_taxable
-        total_cgst += gst_calc["cgst_amount"]
-        total_sgst += gst_calc["sgst_amount"]
-        total_igst += gst_calc["igst_amount"]
-
-    invoice.subtotal = quantize_money(total_subtotal)
-    invoice.cgst_amount = quantize_money(total_cgst)
-    invoice.sgst_amount = quantize_money(total_sgst)
-    invoice.igst_amount = quantize_money(total_igst)
-    invoice.total_tax = quantize_money(total_cgst + total_sgst + total_igst)
-    invoice.grand_total = quantize_money(invoice.subtotal + invoice.total_tax)
-
-    log_audit_event(
-        db=db,
-        event_type="invoice.created",
-        description=f"GST Tax Invoice generated: {invoice.invoice_number}, Grand Total: ₹{invoice.grand_total}.",
-        actor_id=current_staff.id if current_staff else None,
-        actor_type="staff",
-        actor_email=current_staff.email if current_staff else None,
-        resource_type="invoice",
-        resource_id=str(invoice.id),
-        details={"invoice_number": invoice.invoice_number, "grand_total": str(invoice.grand_total), "sale_id": str(sale.id)},
-    )
-
-    db.commit()
-    db.refresh(invoice)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
 
     # Return with loaded items and credit notes
     stmt = (
@@ -249,7 +129,48 @@ def create_invoice_from_sale(
         .filter(Invoice.id == invoice.id)
     )
     result = db.execute(stmt).scalar_one()
+
+    # Automatically dispatch tax invoice email asynchronously / safely
+    try:
+        send_invoice_email(db=db, invoice=result)
+    except Exception as e:
+        logger.warning(f"Could not auto-dispatch invoice email for {result.invoice_number}: {e}")
+
     return result
+
+
+@router.post(
+    "/{id}/send-email",
+    summary="Resend statutory tax invoice email to customer",
+)
+def resend_invoice_email(
+    id: uuid.UUID,
+    email: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(get_current_staff),
+):
+    """
+    Manually triggers or resends the official GST Tax Invoice email to the customer.
+    """
+    stmt = (
+        select(Invoice)
+        .options(
+            selectinload(Invoice.items),
+            selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+        )
+        .filter(Invoice.id == id)
+    )
+    invoice = db.execute(stmt).scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found.")
+
+    sent = send_invoice_email(db=db, invoice=invoice, customer_email=email)
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not send email. Ensure customer email is valid and configured.",
+        )
+    return {"status": "ok", "message": f"Invoice email dispatched successfully for {invoice.invoice_number}."}
 
 
 @router.get(
@@ -270,7 +191,35 @@ def list_invoices(
 ):
     """
     List invoices with multi-faceted filtering.
+    Automatically backfills completed sales that do not have an invoice record yet.
     """
+    # Auto-backfill invoices for completed sales that have none
+    try:
+        unbilled_sales = db.execute(
+            select(Sale)
+            .outerjoin(Invoice, Invoice.sale_id == Sale.id)
+            .filter(Invoice.id == None, Sale.status == "completed")
+            .order_by(Sale.created_at.asc())
+            .limit(50)
+        ).scalars().all()
+
+        if unbilled_sales:
+            for s in unbilled_sales:
+                try:
+                    generate_invoice_for_sale(
+                        db=db,
+                        sale_id=s.id,
+                        staff_id=s.cashier_id or current_staff.id,
+                        staff_email=current_staff.email,
+                        auto_commit=False,
+                    )
+                except Exception as ex:
+                    logger.warning(f"Auto-backfill invoice failed for sale {s.id}: {ex}")
+            db.commit()
+    except Exception as e:
+        logger.warning(f"Error during auto-backfill of unbilled sales: {e}")
+        db.rollback()
+
     stmt = (
         select(Invoice)
         .options(

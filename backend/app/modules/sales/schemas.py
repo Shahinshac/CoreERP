@@ -115,6 +115,8 @@ class SaleResponse(BaseModel):
     payment_details: list[SplitPaymentDetail] | None = None
     notes: str | None
     items: list[SaleItemResponse]
+    gst_invoice_id: uuid.UUID | None = None
+    gst_invoice_number: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -78,20 +78,21 @@
 }
 
 /* ==========================================================================
-   THERMAL RECEIPT PRINT STYLES (@media print)
-   Supports 58mm and 80mm roll widths with browser-native printing.
-   Hides screen chrome, application navigation, modals, and backdrops.
+   PRINT STYLES (@media print)
+   Supports A4 Tax Invoices and 58mm / 80mm Thermal Receipt rolls.
+   Hides screen chrome, application navigation, modals, and toasts.
    ========================================================================== */
 
-/* Screen style: hide dedicated print portal */
-#thermal-receipt-print-area {
+/* Screen style: hide dedicated print portals */
+#thermal-receipt-print-area,
+#a4-invoice-print-area {
   display: none;
 }
 
 @media print {
   @page {
     size: auto;
-    margin: 0mm;
+    margin: 8mm;
   }
 
   html,
@@ -116,8 +117,26 @@
     display: none !important;
   }
 
-  /* Make dedicated print container visible and isolate it */
-  #thermal-receipt-print-area {
+  /* A4 Invoice Print Area */
+  body.printing-a4 #a4-invoice-print-area {
+    display: block !important;
+    position: static !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  body.printing-a4 #thermal-receipt-print-area {
+    display: none !important;
+  }
+
+  /* Thermal Slip Print Area */
+  body.printing-thermal #thermal-receipt-print-area {
     display: block !important;
     position: static !important;
     margin: 0 !important;
@@ -130,17 +149,27 @@
     page-break-after: avoid !important;
   }
 
-  #thermal-receipt-print-area.receipt-58mm {
+  body.printing-thermal #a4-invoice-print-area {
+    display: none !important;
+  }
+
+  body.printing-thermal #thermal-receipt-print-area.receipt-58mm {
     width: 58mm !important;
     max-width: 58mm !important;
   }
 
-  #thermal-receipt-print-area.receipt-80mm {
+  body.printing-thermal #thermal-receipt-print-area.receipt-80mm {
     width: 80mm !important;
     max-width: 80mm !important;
   }
 
-  #thermal-receipt-print-area * {
+  /* Fallback: if no specific class on body, show whichever container is populated */
+  body:not(.printing-a4):not(.printing-thermal) #a4-invoice-print-area {
+    display: block !important;
+  }
+
+  #thermal-receipt-print-area *,
+  #a4-invoice-print-area * {
     color: #000000 !important;
     text-shadow: none !important;
     box-shadow: none !important;
