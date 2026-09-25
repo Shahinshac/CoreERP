@@ -32,6 +32,8 @@ jobs:
           TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
           DUMP_FILE="backups/erp_backup_${TIMESTAMP}.sql.gz"
           
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          echo "Using pg_dump binary: $(which pg_dump) ($(pg_dump --version))"
           echo "Executing pg_dump for backup timestamp: ${TIMESTAMP}..."
           CLEAN_URL=$(echo "${DATABASE_URL}" | sed 's/postgresql+psycopg:/postgresql:/')
           pg_dump "${CLEAN_URL}" --no-owner --no-acl --clean --if-exists | gzip > "${DUMP_FILE}"

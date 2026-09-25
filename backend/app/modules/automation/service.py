@@ -473,10 +473,12 @@ def run_salary_reminder_check(db: Session, today: Optional[date] = None) -> Dict
     target_month = today.month if today.day >= 25 else (today.month - 1 or 12)
     target_year = today.year if today.day >= 25 or today.month > 1 else today.year - 1
 
-    # Check if salary records already exist for target month/year
+    target_period = f"{target_year}-{target_month:02d}"
+
+    # Check if salary records already exist for target period
     records_count = (
         db.query(func.count(SalaryRecord.id))
-        .filter(SalaryRecord.month == target_month, SalaryRecord.year == target_year)
+        .filter(SalaryRecord.period == target_period)
         .scalar()
         or 0
     )
