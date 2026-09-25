@@ -204,6 +204,22 @@ def generate_invoice_for_sale(
     invoice.total_tax = quantize_money(total_cgst + total_sgst + total_igst)
     invoice.grand_total = quantize_money(invoice.subtotal + invoice.total_tax)
 
+    # Reconcile EMI plan linkage if this sale was financed via EMI
+    if sale.payment_method == "emi":
+        from app.modules.emi.models import EmiPlan
+        emi_plan = db.execute(
+            select(EmiPlan).filter(
+                EmiPlan.customer_id == sale.customer_id,
+                EmiPlan.notes.like(f"%{sale.invoice_number}%"),
+            )
+        ).scalar_one_or_none()
+        if emi_plan:
+            emi_plan.invoice_id = invoice.id
+            if emi_plan.down_payment > Decimal("0.00"):
+                invoice.payment_status = "partial"
+            else:
+                invoice.payment_status = "unpaid"
+
     log_audit_event(
         db=db,
         event_type="invoice.created",

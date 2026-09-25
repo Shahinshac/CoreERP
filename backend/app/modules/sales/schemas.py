@@ -68,6 +68,9 @@ class POSCheckoutRequest(BaseModel):
     split_payments: list[SplitPaymentPortion] | None = None
     notes: str | None = None
     client_total: Decimal | None = None  # Ignored by server; server always recalculates
+    emi_installments: int | None = None
+    emi_down_payment: Decimal | None = None
+    emi_interest_rate: Decimal | None = None
 
     @field_validator("discount_amount", mode="before")
     @classmethod
@@ -75,6 +78,13 @@ class POSCheckoutRequest(BaseModel):
         if v is None:
             return Decimal("0.00")
         return validate_money_decimal(v, allow_negative=False, field_name="Order discount")
+
+    @field_validator("emi_down_payment", mode="before")
+    @classmethod
+    def validate_emi_down_payment(cls, v):
+        if v is None or v == "":
+            return None
+        return validate_money_decimal(v, allow_negative=False, field_name="EMI down payment")
 
     @field_validator("items")
     @classmethod
@@ -117,6 +127,7 @@ class SaleResponse(BaseModel):
     items: list[SaleItemResponse]
     gst_invoice_id: uuid.UUID | None = None
     gst_invoice_number: str | None = None
+    emi_plan_id: uuid.UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

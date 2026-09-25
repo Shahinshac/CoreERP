@@ -22,6 +22,7 @@ import {
   X,
   Zap,
   Layers,
+  Calendar,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -56,6 +57,9 @@ export function POSPage() {
     { method: "cash", amount: "" },
     { method: "upi", amount: "" },
   ])
+  const [emiTenure, setEmiTenure] = useState<number>(3)
+  const [emiDownPayment, setEmiDownPayment] = useState<string>("0.00")
+  const [emiInterestRate, setEmiInterestRate] = useState<string>("0.00")
   const [orderDiscount, setOrderDiscount] = useState("0.00")
   const [notes, setNotes] = useState("")
 
@@ -305,6 +309,23 @@ export function POSPage() {
       !hasInvalidSplitPortion &&
       splitPortions.length >= 2)
 
+  const isEmiMode = paymentMethod === "emi"
+  const parsedDownPayment = Math.max(0, parseFloat(emiDownPayment) || 0)
+  const parsedInterestRate = Math.max(0, parseFloat(emiInterestRate) || 0)
+  const emiFinancedPrincipal = Math.max(0, grandTotal - parsedDownPayment)
+  const emiInterestAmount =
+    parsedInterestRate > 0 && emiTenure > 0
+      ? (emiFinancedPrincipal * (parsedInterestRate / 100) * (emiTenure / 12))
+      : 0
+  const emiTotalFinanced = emiFinancedPrincipal + emiInterestAmount
+  const emiMonthlyAmount = emiTenure > 0 ? (emiTotalFinanced / emiTenure) : 0
+  const isEmiReady =
+    !isEmiMode ||
+    (Boolean(selectedCustomerId) &&
+      parsedDownPayment < grandTotal &&
+      grandTotal > 0 &&
+      emiTenure > 0)
+
   const handleAddSplitPortion = () => {
     if (splitPortions.length >= 3) return
     const usedMethods = new Set(splitPortions.map((p) => p.method))
@@ -386,6 +407,26 @@ export function POSPage() {
       }
     }
 
+    // Validate EMI financing
+    if (isEmiMode) {
+      if (!selectedCustomerId) {
+        toast.error("Customer account selection is required for EMI financing. Please select or add a customer.")
+        return
+      }
+      if (parsedDownPayment >= grandTotal) {
+        toast.error("Down payment must be less than Total Payable. Use regular settlement if paying in full.")
+        return
+      }
+      if (parsedDownPayment < 0) {
+        toast.error("Down payment cannot be negative.")
+        return
+      }
+      if (emiTenure <= 0) {
+        toast.error("Please select a valid installment tenure.")
+        return
+      }
+    }
+
     setIsCheckingOut(true)
     try {
       const selectedCust = customers.find((c) => c.id === selectedCustomerId)
@@ -404,6 +445,9 @@ export function POSPage() {
               amount: parseFloat(p.amount).toFixed(2),
             }))
           : undefined,
+        emi_installments: isEmiMode ? emiTenure : undefined,
+        emi_down_payment: isEmiMode ? emiDownPayment : undefined,
+        emi_interest_rate: isEmiMode && parsedInterestRate > 0 ? emiInterestRate : undefined,
         notes: notes.trim() || undefined,
         client_total: grandTotal.toFixed(2),
       })
@@ -428,11 +472,15 @@ export function POSPage() {
         toast.success(`Checkout complete! Invoice: ${sale.invoice_number}`)
       }
 
+      if (isEmiMode) {
+        toast.success(`EMI Plan created! Monthly: ₹${emiMonthlyAmount.toFixed(2)} x ${emiTenure} months.`)
+      }
+
       setCompletedSale(sale)
       setReceiptOpen(true)
       refetchDrawer()
 
-      // Clear cart
+      // Clear cart and checkout state
       setCart([])
       setOrderDiscount("0.00")
       setNotes("")
@@ -440,6 +488,8 @@ export function POSPage() {
         { method: "cash", amount: "" },
         { method: "upi", amount: "" },
       ])
+      setEmiDownPayment("0.00")
+      setEmiInterestRate("0.00")
     } catch {
       // Handled by api error toast
     } finally {
@@ -467,7 +517,7 @@ export function POSPage() {
     }
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [cart, isCheckingOut, isSplitMode, splitPortions, isSplitReady, grandTotal, selectedCustomerId, notes, orderDiscount, paymentMethod])
+  }, [cart, isCheckingOut, isSplitMode, splitPortions, isSplitReady, isEmiMode, isEmiReady, emiTenure, emiDownPayment, emiInterestRate, grandTotal, selectedCustomerId, notes, orderDiscount, paymentMethod])
 
   return (
     <div className="space-y-6">
@@ -962,8 +1012,155 @@ export function POSPage() {
                 <option value="card">Credit / Debit Card</option>
                 <option value="upi">UPI / QR Code</option>
                 <option value="split">Split Payment</option>
+                <option value="emi">EMI Financing (Monthly Installments)</option>
               </Select>
             </div>
+
+            {/* EMI Financing Plan Panel */}
+            {isEmiMode && (
+              <div className="p-3 rounded-lg bg-surface/80 border border-primary/20 space-y-3 shadow-inner">
+                <div className="flex items-center justify-between border-b border-white/[0.08] pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-100">
+                    <Calendar className="h-3.5 w-3.5 text-primary" />
+                    <span>EMI Financing Plan</span>
+                  </div>
+                  <Badge variant="outline" className="text-primary border-primary/30 bg-primary/10 text-[10px] gap-1 px-1.5 py-0.5 font-mono">
+                    <Zap className="h-3 w-3" /> Monthly Installments
+                  </Badge>
+                </div>
+
+                {/* Customer Validation Banner */}
+                {!selectedCustomerId ? (
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div className="text-xs text-amber-200">
+                        <strong className="block text-amber-300 font-semibold">Customer Account Required</strong>
+                        EMI financing requires an identified customer account to maintain installment schedules and statutory records.
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setIsCustomerDialogOpen(true)}
+                      className="w-full h-7 bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs gap-1.5 shadow-none"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      + Add / Select Customer
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs bg-emerald-500/10 border border-emerald-500/25 p-2 rounded text-emerald-300">
+                    <div className="flex items-center gap-1.5">
+                      <UserCheck className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>Financing for: <strong>{customers.find((c) => c.id === selectedCustomerId)?.name}</strong></span>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400">Verified</span>
+                  </div>
+                )}
+
+                {/* Tenure Selector */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center text-[11px] text-zinc-300">
+                    <span className="font-medium">Installment Tenure (Months)</span>
+                    <span className="font-mono text-primary font-bold">{emiTenure} Months</span>
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {[3, 6, 9, 12, 18, 24].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setEmiTenure(t)}
+                        className={`h-8 rounded text-xs font-mono font-medium transition ${
+                          emiTenure === t
+                            ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                            : "bg-surface-elevated hover:bg-white/[0.08] text-zinc-300 border border-white/[0.08]"
+                        }`}
+                      >
+                        {t}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Down Payment & Interest Rate Inputs */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-zinc-300">
+                      Down Payment (₹)
+                    </label>
+                    <NumericInput
+                      value={emiDownPayment}
+                      onChange={setEmiDownPayment}
+                      precisionType="money"
+                      prefix="₹"
+                      className="h-8 text-right text-xs"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-zinc-300">
+                      Annual Interest (%)
+                    </label>
+                    <NumericInput
+                      value={emiInterestRate}
+                      onChange={setEmiInterestRate}
+                      precisionType="money"
+                      className="h-8 text-right text-xs"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                {parsedDownPayment >= grandTotal && grandTotal > 0 && (
+                  <div className="text-[11px] text-rose-400 flex items-center gap-1.5 pt-0.5">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    Down payment must be less than Total Payable (₹{grandTotal.toFixed(2)}).
+                  </div>
+                )}
+
+                {/* Live EMI Calculation Summary Card */}
+                <div className="p-2.5 rounded bg-black/30 border border-white/[0.08] space-y-1.5 text-xs font-mono">
+                  <div className="flex justify-between text-zinc-400 text-[11px]">
+                    <span>Financed Principal:</span>
+                    <span>₹{emiFinancedPrincipal.toFixed(2)}</span>
+                  </div>
+                  {parsedInterestRate > 0 ? (
+                    <div className="flex justify-between text-zinc-400 text-[11px]">
+                      <span>Interest ({parsedInterestRate}% p.a.):</span>
+                      <span>+₹{emiInterestAmount.toFixed(2)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-emerald-400 text-[11px]">
+                      <span>Interest Scheme:</span>
+                      <span className="font-sans font-bold">0% No-Cost EMI</span>
+                    </div>
+                  )}
+                  {parsedDownPayment > 0 && (
+                    <div className="flex justify-between text-zinc-400 text-[11px]">
+                      <span>Upfront Down Payment:</span>
+                      <span className="text-zinc-200">₹{parsedDownPayment.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-zinc-300 text-[11px] pt-1 border-t border-white/[0.08]">
+                    <span>Total Financed:</span>
+                    <span className="font-bold">₹{emiTotalFinanced.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-baseline pt-1.5 border-t border-white/[0.12]">
+                    <span className="text-zinc-200 font-sans font-semibold text-xs">
+                      Monthly Installment:
+                    </span>
+                    <div className="text-right">
+                      <span className="text-base font-bold text-emerald-400">
+                        ₹{emiMonthlyAmount.toFixed(2)}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-sans"> / month</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Split Payment Allocation Panel */}
             {isSplitMode && (
@@ -1077,11 +1274,20 @@ export function POSPage() {
             {/* Checkout Action Button */}
             <Button
               onClick={handleCheckout}
-              disabled={cart.length === 0 || isCheckingOut || (isSplitMode && !isSplitReady)}
+              disabled={
+                cart.length === 0 ||
+                isCheckingOut ||
+                (isSplitMode && !isSplitReady) ||
+                (isEmiMode && !isEmiReady)
+              }
               className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm shadow-none gap-2"
             >
               <Zap className="h-4 w-4" />
-              {isCheckingOut ? "Processing Transaction..." : `Complete Checkout (₹${grandTotal.toFixed(2)})`}
+              {isCheckingOut
+                ? "Processing Transaction..."
+                : isEmiMode
+                ? `Authorize EMI Sale (₹${emiMonthlyAmount.toFixed(2)}/mo)`
+                : `Complete Checkout (₹${grandTotal.toFixed(2)})`}
             </Button>
           </div>
         </div>

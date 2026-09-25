@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 import logging
 import uuid
@@ -12,7 +12,11 @@ from app.modules.audit.service import log_audit_event
 from app.modules.auth.dependencies import get_current_staff
 from app.modules.auth.models import Customer, StaffUser
 from app.modules.catalog.models import Product
+from app.modules.emi.models import EmiInstallment, EmiPlan, EmiPlanStatus
+from app.modules.emi.schedule import compute_emi_schedule
 from app.modules.inventory.models import MovementType, StockMovement
+from app.modules.invoicing.models import Invoice
+from app.modules.invoicing.service import generate_invoice_for_sale, send_invoice_email
 from app.modules.payments.models import Payment, PaymentStatus
 from app.modules.sales.models import ReturnItem, Sale, SaleItem, SaleReturn
 from app.modules.sales.schemas import (
@@ -251,9 +255,65 @@ def pos_checkout(
         tax_amount = Decimal("0.00")  # Phase 6 placeholder pre-GST subtotal only
         grand_total = quantize_money(subtotal - order_discount + tax_amount)
 
-        # Validate payment method and split payment portions
+        # Validate payment method and split payment portions or EMI
         payment_details_data = None
-        if payload.payment_method == "split" or payload.split_payments:
+        created_emi_plan = None
+        emi_schedule = None
+
+        if payload.payment_method == "emi":
+            if not customer:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Customer account selection is required for EMI financing. Please select or register a customer.",
+                )
+
+            down_payment = quantize_money(payload.emi_down_payment or Decimal("0.00"))
+            if down_payment < Decimal("0.00"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Down payment cannot be negative.",
+                )
+            if down_payment >= grand_total:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Down payment must be less than the total bill amount. Use regular payment methods if paying in full.",
+                )
+
+            tenure = payload.emi_installments or 3
+            if tenure <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Tenure installments must be greater than 0.",
+                )
+
+            interest_rate = (
+                payload.emi_interest_rate
+                if (payload.emi_interest_rate and payload.emi_interest_rate > Decimal("0.00"))
+                else None
+            )
+
+            try:
+                emi_schedule = compute_emi_schedule(
+                    principal=grand_total,
+                    down_payment=down_payment,
+                    number_of_installments=tenure,
+                    start_date=date.today(),
+                    interest_rate=interest_rate,
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+            final_payment_method = "emi"
+            if down_payment > Decimal("0.00"):
+                payment_details_data = [
+                    {"method": "down_payment", "amount": str(down_payment)},
+                    {"method": "emi", "amount": str(emi_schedule["total_financed"])},
+                ]
+            else:
+                payment_details_data = [
+                    {"method": "emi", "amount": str(emi_schedule["total_financed"])},
+                ]
+        elif payload.payment_method == "split" or payload.split_payments:
             if not payload.split_payments:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -320,18 +380,33 @@ def pos_checkout(
         db.flush()
 
         # Record payment ledger entries
-        for p in payment_details_data:
-            payment_record = Payment(
-                customer_id=customer.id if customer else None,
-                created_by=current_staff.id,
-                method=p["method"],
-                amount=Decimal(p["amount"]),
-                status=PaymentStatus.PAID.value,
-                idempotency_key=f"pos-{sale.id}-{p['method']}",
-                reference_id=sale.invoice_number,
-                notes=f"POS Sale {sale.invoice_number} ({p['method'].upper()})",
-            )
-            db.add(payment_record)
+        if final_payment_method == "emi":
+            down_pay = quantize_money(payload.emi_down_payment or Decimal("0.00"))
+            if down_pay > Decimal("0.00"):
+                payment_record = Payment(
+                    customer_id=customer.id if customer else None,
+                    created_by=current_staff.id,
+                    method="cash",
+                    amount=down_pay,
+                    status=PaymentStatus.PAID.value,
+                    idempotency_key=f"pos-{sale.id}-down_payment",
+                    reference_id=sale.invoice_number,
+                    notes=f"POS Sale {sale.invoice_number} Down Payment",
+                )
+                db.add(payment_record)
+        else:
+            for p in payment_details_data:
+                payment_record = Payment(
+                    customer_id=customer.id if customer else None,
+                    created_by=current_staff.id,
+                    method=p["method"],
+                    amount=Decimal(p["amount"]),
+                    status=PaymentStatus.PAID.value,
+                    idempotency_key=f"pos-{sale.id}-{p['method']}",
+                    reference_id=sale.invoice_number,
+                    notes=f"POS Sale {sale.invoice_number} ({p['method'].upper()})",
+                )
+                db.add(payment_record)
 
         sale_items_created = []
         for line in line_items_data:
@@ -363,6 +438,39 @@ def pos_checkout(
             )
             db.add(movement)
 
+        db.flush()
+
+        # If EMI, persist EmiPlan and EmiInstallments
+        if final_payment_method == "emi" and emi_schedule:
+            created_emi_plan = EmiPlan(
+                customer_id=customer.id,
+                invoice_id=None,
+                created_by=current_staff.id,
+                principal=emi_schedule["principal"],
+                down_payment=emi_schedule["down_payment"],
+                number_of_installments=emi_schedule["number_of_installments"],
+                interest_rate=emi_schedule["interest_rate"],
+                interest_amount=emi_schedule["interest_amount"],
+                total_financed=emi_schedule["total_financed"],
+                installment_amount=emi_schedule["installment_amount"],
+                start_date=emi_schedule["start_date"],
+                status=EmiPlanStatus.ACTIVE.value,
+                notes=f"POS Sale #{sale.invoice_number} EMI Financing ({payload.emi_installments or 3} months)",
+            )
+            db.add(created_emi_plan)
+            db.flush()
+
+            for inst_data in emi_schedule["installments"]:
+                inst = EmiInstallment(
+                    emi_plan_id=created_emi_plan.id,
+                    installment_number=inst_data["installment_number"],
+                    due_date=inst_data["due_date"],
+                    amount_due=inst_data["amount_due"],
+                    amount_paid=inst_data["amount_paid"],
+                    status=inst_data["status"],
+                )
+                db.add(inst)
+
         log_audit_event(
             db=db,
             event_type="pos.sale_completed",
@@ -377,6 +485,7 @@ def pos_checkout(
                 "total_amount": str(sale.total_amount),
                 "payment_method": sale.payment_method,
                 "payment_details": sale.payment_details,
+                "emi_plan_id": str(created_emi_plan.id) if created_emi_plan else None,
             },
         )
 
@@ -418,6 +527,9 @@ def pos_checkout(
             )
             for item, prod in sale_items_created
         ],
+        gst_invoice_id=None,
+        gst_invoice_number=None,
+        emi_plan_id=created_emi_plan.id if created_emi_plan else None,
     )
 
 
@@ -597,6 +709,12 @@ def list_sales(
         query = query.filter(Sale.invoice_number.ilike(pat))
 
     sales = query.order_by(Sale.created_at.desc()).limit(50).all()
+    sale_ids = [s.id for s in sales]
+    invoices = db.query(Invoice).filter(Invoice.sale_id.in_(sale_ids)).all() if sale_ids else []
+    inv_by_sale_id = {i.sale_id: i for i in invoices}
+    inv_ids = [i.id for i in invoices]
+    emi_plans = db.query(EmiPlan).filter(EmiPlan.invoice_id.in_(inv_ids)).all() if inv_ids else []
+    emi_by_inv_id = {p.invoice_id: p for p in emi_plans}
 
     return [
         SaleResponse(
@@ -634,6 +752,13 @@ def list_sales(
                 )
                 for item in s.items
             ],
+            gst_invoice_id=inv_by_sale_id.get(s.id).id if inv_by_sale_id.get(s.id) else None,
+            gst_invoice_number=inv_by_sale_id.get(s.id).invoice_number if inv_by_sale_id.get(s.id) else None,
+            emi_plan_id=(
+                emi_by_inv_id.get(inv_by_sale_id.get(s.id).id).id
+                if inv_by_sale_id.get(s.id) and emi_by_inv_id.get(inv_by_sale_id.get(s.id).id)
+                else None
+            ),
         )
         for s in sales
     ]
@@ -655,6 +780,9 @@ def get_sale(
     sale = query.first()
     if not sale:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found.")
+
+    inv = db.query(Invoice).filter(Invoice.sale_id == sale.id).first()
+    emi_p = db.query(EmiPlan).filter(EmiPlan.invoice_id == inv.id).first() if inv else None
 
     return SaleResponse(
         id=sale.id,
@@ -691,4 +819,7 @@ def get_sale(
             )
             for item in sale.items
         ],
+        gst_invoice_id=inv.id if inv else None,
+        gst_invoice_number=inv.invoice_number if inv else None,
+        emi_plan_id=emi_p.id if emi_p else None,
     )

@@ -38,6 +38,9 @@ export interface POSCheckoutPayload {
   split_payments?: SplitPaymentPortion[]
   notes?: string
   client_total?: string
+  emi_installments?: number
+  emi_down_payment?: string
+  emi_interest_rate?: string
 }
 
 export interface SaleItem {
@@ -69,6 +72,9 @@ export interface Sale {
   payment_details?: SplitPaymentPortion[] | null
   notes?: string | null
   items: SaleItem[]
+  gst_invoice_id?: string | null
+  gst_invoice_number?: string | null
+  emi_plan_id?: string | null
 }
 
 export interface ReturnItemInput {

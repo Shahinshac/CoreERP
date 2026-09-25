@@ -372,11 +372,31 @@ export const ThermalReceipt: React.FC<ThermalReceiptProps> = ({
               ))}
             </div>
           )}
-        {sale.payment_method !== "cash" && (
-          <div className="flex justify-between text-neutral-800">
-            <span>Payment Status:</span>
-            <span className="font-bold">PAID IN FULL</span>
-          </div>
+        {sale.payment_method === "emi" ? (
+          <>
+            <div className="flex justify-between text-neutral-800">
+              <span>Settlement:</span>
+              <span className="font-bold text-black">EMI FINANCING PLAN</span>
+            </div>
+            {sale.payment_details?.find((p) => p.method === "down_payment") && (
+              <div className="flex justify-between text-neutral-800">
+                <span>Down Payment Paid:</span>
+                <span className="font-mono font-semibold">
+                  ₹{fmt(sale.payment_details.find((p) => p.method === "down_payment")?.amount || "0")}
+                </span>
+              </div>
+            )}
+            <div className="text-[8.5px] italic text-neutral-600 pt-0.5">
+              * Installment schedule active in EMI Accounts
+            </div>
+          </>
+        ) : (
+          sale.payment_method !== "cash" && (
+            <div className="flex justify-between text-neutral-800">
+              <span>Payment Status:</span>
+              <span className="font-bold">PAID IN FULL</span>
+            </div>
+          )
         )}
         {sale.notes && (
           <div className="text-[9px] italic text-neutral-700 pt-0.5">
