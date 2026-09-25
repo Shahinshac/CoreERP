@@ -61,15 +61,15 @@ class Settings(BaseSettings):
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
         if isinstance(v, str):
             if v.strip().startswith("[") and v.strip().endswith("]"):
-                # Let pydantic default json parser handle if passed as json array
                 import json
                 try:
-                    return json.loads(v)
+                    v = json.loads(v)
                 except Exception:
                     pass
-            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+        if isinstance(v, str):
+            origins = [origin.strip().rstrip("/") for origin in v.split(",") if origin.strip()]
         else:
-            origins = list(v)
+            origins = [str(origin).strip().rstrip("/") for origin in v if str(origin).strip()]
         # In credentialed CORS, wildcard '*' is forbidden by browsers and FastAPI CORSMiddleware
         return [o for o in origins if o != "*"]
 
