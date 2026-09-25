@@ -26,12 +26,16 @@ def upgrade() -> None:
     op.add_column('stock_movements', sa.Column('notes', sa.String(length=500), nullable=True))
 
     # Drop the check constraint on products current_stock if it exists
-    # Handled via batch mode for SQLite compatibility or standard drop_constraint
-    try:
-        with op.batch_alter_table('products') as batch_op:
-            batch_op.drop_constraint('ck_products_ck_products_current_stock_positive', type_='check')
-    except Exception:
-        pass
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        op.execute(sa.text("ALTER TABLE products DROP CONSTRAINT IF EXISTS ck_products_ck_products_current_stock_positive;"))
+        op.execute(sa.text("ALTER TABLE products DROP CONSTRAINT IF EXISTS ck_products_ck_products_ck_products_current_stock_positive;"))
+    else:
+        try:
+            with op.batch_alter_table('products') as batch_op:
+                batch_op.drop_constraint('ck_products_ck_products_current_stock_positive', type_='check')
+        except Exception:
+            pass
 
 
 def downgrade() -> None:

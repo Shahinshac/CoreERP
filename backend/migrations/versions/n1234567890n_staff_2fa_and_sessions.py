@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # 1. Add TOTP columns to staff_users
     op.add_column('staff_users', sa.Column('totp_secret', sa.String(length=64), nullable=True))
-    op.add_column('staff_users', sa.Column('is_totp_enabled', sa.Boolean(), server_default=sa.text('0'), nullable=False))
+    op.add_column('staff_users', sa.Column('is_totp_enabled', sa.Boolean(), server_default=sa.false(), nullable=False))
     op.add_column('staff_users', sa.Column('totp_backup_codes', sa.JSON(), nullable=True))
 
     # 2. Create staff_sessions table
@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column('user_agent', sa.String(length=255), nullable=True),
         sa.Column('ip_address', sa.String(length=50), nullable=True),
         sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('is_revoked', sa.Boolean(), server_default=sa.text('0'), nullable=False),
+        sa.Column('is_revoked', sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column('last_active_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
