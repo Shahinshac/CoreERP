@@ -300,7 +300,7 @@ export const CashDrawerModal: React.FC<CashDrawerModalProps> = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={onOpenChange} className="max-w-4xl p-0 overflow-hidden">
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0F0F12] border-white/[0.14] text-zinc-100 p-0 shadow-2xl">
           {/* Header */}
           <DialogHeader className="p-6 border-b border-white/[0.08] flex flex-row items-center justify-between space-y-0">
