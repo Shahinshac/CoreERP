@@ -29,6 +29,7 @@ import {
 import { catalogApi, Product } from "@/features/catalog/api"
 import { ProductDialog } from "@/features/catalog/ProductDialog"
 import { ProductImageUpload } from "@/features/catalog/ProductImageUpload"
+import { CategoryBrandModal } from "@/features/catalog/CategoryBrandModal"
 import { CsvImportModal } from "@/components/common/CsvImportModal"
 import {
   StockOperationDialog,
@@ -54,6 +55,8 @@ export function ProductsPage() {
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [importModalOpen, setImportModalOpen] = useState(false)
+  const [catBrandModalOpen, setCatBrandModalOpen] = useState(false)
+  const [catBrandDefaultTab, setCatBrandDefaultTab] = useState<"categories" | "brands">("categories")
 
   useEffect(() => {
     const q = searchParams.get("search")
@@ -133,6 +136,17 @@ export function ProductsPage() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
+              onClick={() => {
+                setCatBrandDefaultTab("categories")
+                setCatBrandModalOpen(true)
+              }}
+              className="flex items-center gap-2 border-white/[0.14] text-zinc-300 hover:text-white"
+            >
+              <Tag className="h-4 w-4 text-emerald-400" />
+              Categories & Brands
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setImportModalOpen(true)}
               className="flex items-center gap-2 border-white/[0.14] text-zinc-300 hover:text-white"
             >
@@ -175,24 +189,44 @@ export function ProductsPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl p-4 border border-white/[0.14] shadow-none flex items-center gap-3">
-          <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
-            <Tag className="h-5 w-5" />
+        <div
+          onClick={() => {
+            setCatBrandDefaultTab("categories")
+            setCatBrandModalOpen(true)
+          }}
+          className="bg-card rounded-xl p-4 border border-white/[0.14] hover:border-emerald-500/40 shadow-none flex items-center justify-between gap-3 cursor-pointer transition-colors group"
+          title="Click to view and manage categories"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg group-hover:scale-105 transition-transform">
+              <Tag className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-medium text-zinc-400">Categories</div>
+              <div className="text-xl font-bold text-zinc-100">{categories.length}</div>
+            </div>
           </div>
-          <div>
-            <div className="text-xs font-medium text-zinc-400">Categories</div>
-            <div className="text-xl font-bold text-zinc-100">{categories.length}</div>
-          </div>
+          <span className="text-[11px] text-zinc-500 group-hover:text-emerald-400 transition-colors">Manage &rarr;</span>
         </div>
 
-        <div className="bg-card rounded-xl p-4 border border-white/[0.14] shadow-none flex items-center gap-3">
-          <div className="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg">
-            <Boxes className="h-5 w-5" />
+        <div
+          onClick={() => {
+            setCatBrandDefaultTab("brands")
+            setCatBrandModalOpen(true)
+          }}
+          className="bg-card rounded-xl p-4 border border-white/[0.14] hover:border-purple-500/40 shadow-none flex items-center justify-between gap-3 cursor-pointer transition-colors group"
+          title="Click to view and manage brands"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg group-hover:scale-105 transition-transform">
+              <Boxes className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-xs font-medium text-zinc-400">Brands</div>
+              <div className="text-xl font-bold text-zinc-100">{brands.length}</div>
+            </div>
           </div>
-          <div>
-            <div className="text-xs font-medium text-zinc-400">Brands</div>
-            <div className="text-xl font-bold text-zinc-100">{brands.length}</div>
-          </div>
+          <span className="text-[11px] text-zinc-500 group-hover:text-purple-400 transition-colors">Manage &rarr;</span>
         </div>
       </div>
 
@@ -516,6 +550,13 @@ export function ProductsPage() {
         ]}
         onPreview={catalogApi.previewImport}
         onConfirm={catalogApi.confirmImport}
+        onSuccess={() => refetch()}
+      />
+
+      <CategoryBrandModal
+        open={catBrandModalOpen}
+        onOpenChange={setCatBrandModalOpen}
+        defaultTab={catBrandDefaultTab}
         onSuccess={() => refetch()}
       />
     </div>

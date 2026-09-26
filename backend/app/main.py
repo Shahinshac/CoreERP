@@ -18,6 +18,15 @@ logger = logging.getLogger("app.main")
 async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("Application starting up...")
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST") is None:
+        try:
+            from app.core.db import SessionLocal
+            from app.modules.catalog.bootstrap import bootstrap_catalog_defaults
+            with SessionLocal() as db:
+                bootstrap_catalog_defaults(db)
+        except Exception as exc:
+            logger.warning(f"Catalog defaults bootstrap skipped or failed: {exc}")
     yield
     logger.info("Application shutting down...")
 

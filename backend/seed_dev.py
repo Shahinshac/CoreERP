@@ -33,17 +33,11 @@ def seed():
             db.flush()
 
         # 3. Category & Brand
-        cat = db.query(models.Category).filter_by(name="Electronics").first()
-        if not cat:
-            cat = models.Category(name="Electronics", description="Electronic items")
-            db.add(cat)
-            db.flush()
+        from app.modules.catalog.bootstrap import bootstrap_catalog_defaults
+        bootstrap_catalog_defaults(db)
 
+        cat = db.query(models.Category).filter_by(name="Electronics").first()
         brand = db.query(models.Brand).filter_by(name="Dell").first()
-        if not brand:
-            brand = models.Brand(name="Dell")
-            db.add(brand)
-            db.flush()
 
         # 4. Products
         prod1 = db.query(models.Product).filter_by(sku="LAP-DELL-001").first()

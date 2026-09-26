@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import React, { useEffect, useRef, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { NumericInput } from "@/components/ui/numeric-input"
 import { Badge } from "@/components/ui/badge"
-import { Calculator } from "lucide-react"
+import { Boxes, Calculator, Check, Loader2, Plus, Tag, X } from "lucide-react"
 import { catalogApi, Product } from "./api"
 
 interface ProductDialogProps {
@@ -29,6 +29,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   product,
   onSuccess,
 }) => {
+  const queryClient = useQueryClient()
   const [name, setName] = useState("")
   const [sku, setSku] = useState("")
   const [barcode, setBarcode] = useState("")
@@ -43,6 +44,19 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   const [isPinned, setIsPinned] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Inline Quick-add category state
+  const [isAddingCategory, setIsAddingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [newCategoryDesc, setNewCategoryDesc] = useState("")
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+
+  // Inline Quick-add brand state
+  const [isAddingBrand, setIsAddingBrand] = useState(false)
+  const [newBrandName, setNewBrandName] = useState("")
+  const [isCreatingBrand, setIsCreatingBrand] = useState(false)
+
+  const hasInitializedRef = useRef(false)
+
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: catalogApi.getCategories,
@@ -56,34 +70,98 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   })
 
   useEffect(() => {
-    if (product) {
-      setName(product.name)
-      setSku(product.sku)
-      setBarcode(product.barcode || "")
-      setHsnCode(product.hsn_code || "")
-      setCategoryId(product.category_id)
-      setBrandId(product.brand_id)
-      setUnit(product.unit)
-      setPurchasePrice(product.purchase_price)
-      setSellingPrice(product.selling_price)
-      setGstRate(product.gst_rate)
-      setMinStock(product.min_stock)
-      setIsPinned(!!product.is_pinned)
-    } else {
-      setName("")
-      setSku("")
-      setBarcode("")
-      setHsnCode("")
-      setCategoryId(categories[0]?.id || "")
-      setBrandId(brands[0]?.id || "")
-      setUnit("pcs")
-      setPurchasePrice("")
-      setSellingPrice("")
-      setGstRate("18.00")
-      setMinStock("5.000")
-      setIsPinned(false)
+    if (!open) {
+      hasInitializedRef.current = false
+      setIsAddingCategory(false)
+      setIsAddingBrand(false)
+      return
     }
-  }, [product, open, categories, brands])
+
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      if (product) {
+        setName(product.name)
+        setSku(product.sku)
+        setBarcode(product.barcode || "")
+        setHsnCode(product.hsn_code || "")
+        setCategoryId(product.category_id)
+        setBrandId(product.brand_id)
+        setUnit(product.unit)
+        setPurchasePrice(product.purchase_price)
+        setSellingPrice(product.selling_price)
+        setGstRate(product.gst_rate)
+        setMinStock(product.min_stock)
+        setIsPinned(!!product.is_pinned)
+      } else {
+        setName("")
+        setSku("")
+        setBarcode("")
+        setHsnCode("")
+        setCategoryId(categories[0]?.id || "")
+        setBrandId(brands[0]?.id || "")
+        setUnit("pcs")
+        setPurchasePrice("")
+        setSellingPrice("")
+        setGstRate("18.00")
+        setMinStock("5.000")
+        setIsPinned(false)
+      }
+    } else {
+      // Auto-select first item if previously none was available and now loaded
+      if (!categoryId && categories.length > 0) {
+        setCategoryId(categories[0].id)
+      }
+      if (!brandId && brands.length > 0) {
+        setBrandId(brands[0].id)
+      }
+    }
+  }, [open, product, categories, brands, categoryId, brandId])
+
+  const handleCreateCategoryInline = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!newCategoryName.trim()) return toast.error("Category name is required.")
+
+    setIsCreatingCategory(true)
+    try {
+      const created = await catalogApi.createCategory({
+        name: newCategoryName.trim(),
+        description: newCategoryDesc.trim() || undefined,
+      })
+      toast.success(`Category "${created.name}" created!`)
+      await queryClient.invalidateQueries({ queryKey: ["categories"] })
+      setCategoryId(created.id)
+      setNewCategoryName("")
+      setNewCategoryDesc("")
+      setIsAddingCategory(false)
+    } catch {
+      // Error handled by apiClient
+    } finally {
+      setIsCreatingCategory(false)
+    }
+  }
+
+  const handleCreateBrandInline = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!newBrandName.trim()) return toast.error("Brand name is required.")
+
+    setIsCreatingBrand(true)
+    try {
+      const created = await catalogApi.createBrand({
+        name: newBrandName.trim(),
+      })
+      toast.success(`Brand "${created.name}" created!`)
+      await queryClient.invalidateQueries({ queryKey: ["brands"] })
+      setBrandId(created.id)
+      setNewBrandName("")
+      setIsAddingBrand(false)
+    } catch {
+      // Error handled by apiClient
+    } finally {
+      setIsCreatingBrand(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -205,39 +283,198 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-foreground">Category *</label>
-            <Select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                Select Category
-              </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+            <div className="flex items-center justify-between">
+              <label className="font-medium text-foreground">Category *</label>
+              <button
+                type="button"
+                onClick={() => setIsAddingCategory((prev) => !prev)}
+                className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+              >
+                {isAddingCategory ? (
+                  <>
+                    <X className="h-3 w-3" /> Cancel
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3 w-3" /> + Add Category
+                  </>
+                )}
+              </button>
+            </div>
+
+            {isAddingCategory ? (
+              <div className="p-3 bg-surface-elevated border border-primary/30 rounded-lg space-y-2 mt-1">
+                <div className="text-xs font-semibold text-primary flex items-center gap-1">
+                  <Tag className="h-3.5 w-3.5" /> Quick Add Category
+                </div>
+                <Input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="Category Name (e.g. Peripherals)"
+                  autoFocus
+                  className="bg-surface border-white/[0.14] h-8 text-xs"
+                />
+                <Input
+                  value={newCategoryDesc}
+                  onChange={(e) => setNewCategoryDesc(e.target.value)}
+                  placeholder="Optional description"
+                  className="bg-surface border-white/[0.14] h-8 text-xs"
+                />
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => {
+                      setIsAddingCategory(false)
+                      setNewCategoryName("")
+                      setNewCategoryDesc("")
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 text-xs px-2.5"
+                    disabled={isCreatingCategory}
+                    onClick={handleCreateCategoryInline}
+                  >
+                    {isCreatingCategory ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <Check className="h-3 w-3 mr-1" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    {categories.length === 0 ? "No categories available" : "Select Category"}
+                  </option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+                {categories.length === 0 && (
+                  <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                    No categories found. Click{" "}
+                    <button
+                      type="button"
+                      className="font-semibold underline text-primary"
+                      onClick={() => setIsAddingCategory(true)}
+                    >
+                      + Add Category
+                    </button>{" "}
+                    to create one.
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-foreground">Brand *</label>
-            <Select
-              value={brandId}
-              onChange={(e) => setBrandId(e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                Select Brand
-              </option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </Select>
+            <div className="flex items-center justify-between">
+              <label className="font-medium text-foreground">Brand *</label>
+              <button
+                type="button"
+                onClick={() => setIsAddingBrand((prev) => !prev)}
+                className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+              >
+                {isAddingBrand ? (
+                  <>
+                    <X className="h-3 w-3" /> Cancel
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-3 w-3" /> + Add Brand
+                  </>
+                )}
+              </button>
+            </div>
+
+            {isAddingBrand ? (
+              <div className="p-3 bg-surface-elevated border border-primary/30 rounded-lg space-y-2 mt-1">
+                <div className="text-xs font-semibold text-primary flex items-center gap-1">
+                  <Boxes className="h-3.5 w-3.5" /> Quick Add Brand
+                </div>
+                <Input
+                  value={newBrandName}
+                  onChange={(e) => setNewBrandName(e.target.value)}
+                  placeholder="Brand Name (e.g. Logitech)"
+                  autoFocus
+                  className="bg-surface border-white/[0.14] h-8 text-xs"
+                />
+                <div className="flex justify-end gap-1.5 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={() => {
+                      setIsAddingBrand(false)
+                      setNewBrandName("")
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 text-xs px-2.5"
+                    disabled={isCreatingBrand}
+                    onClick={handleCreateBrandInline}
+                  >
+                    {isCreatingBrand ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : (
+                      <Check className="h-3 w-3 mr-1" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Select
+                  value={brandId}
+                  onChange={(e) => setBrandId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    {brands.length === 0 ? "No brands available" : "Select Brand"}
+                  </option>
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </Select>
+                {brands.length === 0 && (
+                  <p className="text-xs text-amber-400 mt-1 flex items-center gap-1">
+                    No brands found. Click{" "}
+                    <button
+                      type="button"
+                      className="font-semibold underline text-primary"
+                      onClick={() => setIsAddingBrand(true)}
+                    >
+                      + Add Brand
+                    </button>{" "}
+                    to create one.
+                  </p>
+                )}
+              </>
+            )}
           </div>
 
           <div className="space-y-1">
