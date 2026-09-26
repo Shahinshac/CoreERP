@@ -125,7 +125,8 @@ def export_excel(
 SALES_HEADERS = [
     "invoice_number", "sale_date", "customer_name",
     "subtotal", "discount_amount", "tax_amount",
-    "total_amount", "status", "payment_method",
+    "total_amount", "returned_amount", "net_amount",
+    "status", "payment_method",
 ]
 
 
@@ -157,8 +158,11 @@ def export_sales_pdf(db, start_date: date, end_date: date) -> io.BytesIO:
     elems.append(Paragraph(f"Sales Report", title_style))
     elems.append(Paragraph(f"Period: {start_date} to {end_date}", sub_style))
 
-    headers = ["Invoice #", "Date", "Customer", "Subtotal", "Discount", "Tax", "Total", "Status", "Method"]
-    col_keys = ["invoice_number", "sale_date", "customer_name", "subtotal", "discount_amount", "tax_amount", "total_amount", "status", "payment_method"]
+    headers = ["Invoice #", "Date", "Customer", "Subtotal", "Discount", "Tax", "Total", "Refunded", "Net", "Status", "Method"]
+    col_keys = [
+        "invoice_number", "sale_date", "customer_name", "subtotal", "discount_amount", "tax_amount",
+        "total_amount", "returned_amount", "net_amount", "status", "payment_method"
+    ]
 
     table_data = [headers]
     for row in iter_sales_rows(db, start_date, end_date):
@@ -167,7 +171,7 @@ def export_sales_pdf(db, start_date: date, end_date: date) -> io.BytesIO:
     if len(table_data) == 1:
         table_data.append(["No records found in this period."] + [""] * (len(headers) - 1))
 
-    col_widths = [90, 62, 90, 62, 62, 55, 65, 55, 55]
+    col_widths = [75, 55, 75, 55, 50, 45, 55, 50, 55, 55, 48]
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E3A5F")),
@@ -265,7 +269,8 @@ def export_gst_excel(db, start_date: date, end_date: date) -> io.BytesIO:
 # ============================================================
 
 PL_HEADERS = [
-    "period", "revenue", "invoiced_revenue",
+    "period", "revenue", "returns_refunded", "net_revenue",
+    "invoiced_revenue", "credit_notes_refunded",
     "cost_of_goods", "expenses",
     "gross_profit", "net_profit",
 ]
@@ -297,7 +302,7 @@ def export_pl_pdf(db, start_date: date, end_date: date) -> io.BytesIO:
     elems.append(Paragraph("Profit & Loss Report", title_style))
     elems.append(Paragraph(f"Period: {start_date} to {end_date} | {report['accounting_basis']}", sub_style))
 
-    headers = ["Period", "Revenue (Cash)", "Invoiced Rev.", "COGS", "Expenses", "Gross Profit", "Net Profit"]
+    headers = ["Period", "Gross Rev", "Refunds", "Net Rev", "Invoiced", "CN Refund", "COGS", "Expenses", "Gross Profit", "Net Profit"]
     table_data = [headers]
     for row in report["rows"]:
         table_data.append([str(row.get(k, "")) for k in PL_HEADERS])
@@ -306,11 +311,18 @@ def export_pl_pdf(db, start_date: date, end_date: date) -> io.BytesIO:
     s = report["summary"]
     table_data.append([
         "TOTAL",
-        s["revenue"], s["invoiced_revenue"], s["cost_of_goods"],
-        s["expenses"], s["gross_profit"], s["net_profit"],
+        s.get("revenue", "0.00"),
+        s.get("returns_refunded", "0.00"),
+        s.get("net_revenue", "0.00"),
+        s.get("invoiced_revenue", "0.00"),
+        s.get("credit_notes_refunded", "0.00"),
+        s.get("cost_of_goods", "0.00"),
+        s.get("expenses", "0.00"),
+        s.get("gross_profit", "0.00"),
+        s.get("net_profit", "0.00"),
     ])
 
-    table = Table(table_data, colWidths=[70, 90, 90, 80, 80, 90, 90], repeatRows=1)
+    table = Table(table_data, colWidths=[55, 65, 55, 65, 65, 65, 55, 55, 68, 68], repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E3A5F")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),

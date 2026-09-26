@@ -112,6 +112,11 @@ export const StaffDashboard: React.FC = () => {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {todaySummary?.sales_count || 0} completed {todaySummary?.sales_count === 1 ? "order" : "orders"}
+                {parseFloat(todaySummary?.returns_refunded || "0") > 0 && (
+                  <span className="text-rose-400 font-medium ml-1">
+                    (₹{parseFloat(todaySummary?.returns_refunded || "0").toFixed(2)} refunded)
+                  </span>
+                )}
               </p>
             </CardContent>
           </Card>

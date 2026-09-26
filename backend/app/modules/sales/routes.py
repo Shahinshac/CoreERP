@@ -3,7 +3,7 @@ from decimal import Decimal
 import logging
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.core.db import get_db
@@ -15,8 +15,13 @@ from app.modules.catalog.models import Product
 from app.modules.emi.models import EmiInstallment, EmiPlan, EmiPlanStatus
 from app.modules.emi.schedule import compute_emi_schedule
 from app.modules.inventory.models import MovementType, StockMovement
-from app.modules.invoicing.models import Invoice
-from app.modules.invoicing.service import generate_invoice_for_sale, send_invoice_email
+from app.modules.invoicing.models import CreditNote, CreditNoteItem, Invoice, InvoiceItem
+from app.modules.invoicing.service import (
+    generate_invoice_for_sale,
+    get_financial_year,
+    get_next_sequence_number,
+    send_invoice_email,
+)
 from app.modules.payments.models import Payment, PaymentStatus
 from app.modules.sales.models import ReturnItem, Sale, SaleItem, SaleReturn
 from app.modules.sales.schemas import (
@@ -663,6 +668,102 @@ def pos_return(
         all_returned = all(item.returned_quantity >= item.quantity for item in all_sale_items)
         sale.status = "returned" if all_returned else "partially_returned"
 
+        # Check if an active invoice exists for this sale to issue statutory Credit Note
+        invoice = (
+            db.query(Invoice)
+            .options(selectinload(Invoice.items))
+            .filter(Invoice.sale_id == sale.id, Invoice.is_cancelled == False)
+            .first()
+        )
+        created_credit_note = None
+        if invoice:
+            fy = get_financial_year(date.today())
+            cn_num = get_next_sequence_number(db, fy, "CN")
+            credit_note_number = f"CN/{fy}/{cn_num:05d}"
+
+            created_credit_note = CreditNote(
+                credit_note_number=credit_note_number,
+                financial_year=fy,
+                credit_note_date=date.today(),
+                invoice_id=invoice.id,
+                staff_id=current_staff.id,
+                reason=payload.reason or f"POS Return {return_num}",
+                subtotal_refunded=Decimal("0.00"),
+                cgst_refunded=Decimal("0.00"),
+                sgst_refunded=Decimal("0.00"),
+                igst_refunded=Decimal("0.00"),
+                total_tax_refunded=Decimal("0.00"),
+                grand_total_refunded=Decimal("0.00"),
+            )
+            db.add(created_credit_note)
+            db.flush()
+
+            inv_items_by_prod = {item.product_id: item for item in invoice.items if item.product_id}
+            cn_subtotal = Decimal("0.00")
+            cn_cgst = Decimal("0.00")
+            cn_sgst = Decimal("0.00")
+            cn_igst = Decimal("0.00")
+
+            for ri, prod in return_items_created:
+                inv_item = inv_items_by_prod.get(prod.id)
+                if inv_item and inv_item.quantity > Decimal("0.000"):
+                    ratio = ri.quantity / inv_item.quantity
+                    taxable_ref = quantize_money(inv_item.taxable_value * ratio)
+                    cgst_ref = quantize_money(inv_item.cgst_amount * ratio)
+                    sgst_ref = quantize_money(inv_item.sgst_amount * ratio)
+                    igst_ref = quantize_money(inv_item.igst_amount * ratio)
+                    tot_ref = quantize_money(taxable_ref + cgst_ref + sgst_ref + igst_ref)
+
+                    cn_item = CreditNoteItem(
+                        credit_note_id=created_credit_note.id,
+                        invoice_item_id=inv_item.id,
+                        product_name=inv_item.product_name,
+                        quantity=ri.quantity,
+                        taxable_value=taxable_ref,
+                        cgst_amount=cgst_ref,
+                        sgst_amount=sgst_ref,
+                        igst_amount=igst_ref,
+                        total_amount=tot_ref,
+                    )
+                    db.add(cn_item)
+                    cn_subtotal += taxable_ref
+                    cn_cgst += cgst_ref
+                    cn_sgst += sgst_ref
+                    cn_igst += igst_ref
+
+            created_credit_note.subtotal_refunded = quantize_money(cn_subtotal)
+            created_credit_note.cgst_refunded = quantize_money(cn_cgst)
+            created_credit_note.sgst_refunded = quantize_money(cn_sgst)
+            created_credit_note.igst_refunded = quantize_money(cn_igst)
+            created_credit_note.total_tax_refunded = quantize_money(cn_cgst + cn_sgst + cn_igst)
+            created_credit_note.grand_total_refunded = quantize_money(
+                created_credit_note.subtotal_refunded + created_credit_note.total_tax_refunded
+            )
+
+            if all_returned:
+                invoice.is_cancelled = True
+                invoice.payment_status = "refunded"
+            else:
+                invoice.payment_status = "partially_refunded"
+
+            log_audit_event(
+                db=db,
+                event_type="invoice.credit_note_issued",
+                description=f"Credit Note {created_credit_note.credit_note_number} auto-generated for POS Return {return_num}.",
+                actor_id=current_staff.id,
+                actor_type="staff",
+                actor_email=current_staff.email,
+                resource_type="credit_note",
+                resource_id=str(created_credit_note.id),
+                details={
+                    "credit_note_number": created_credit_note.credit_note_number,
+                    "invoice_id": str(invoice.id),
+                    "invoice_number": invoice.invoice_number,
+                    "grand_total_refunded": str(created_credit_note.grand_total_refunded),
+                    "return_number": return_num,
+                },
+            )
+
     db.commit()
     db.refresh(sale_return)
 
@@ -687,6 +788,8 @@ def pos_return(
             )
             for ri, prod in return_items_created
         ],
+        credit_note_id=created_credit_note.id if created_credit_note else None,
+        credit_note_number=created_credit_note.credit_note_number if created_credit_note else None,
     )
 
 

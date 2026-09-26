@@ -30,7 +30,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import uuid
 from sqlalchemy import func, or_, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.money import quantize_money
 from app.modules.auth.models import Customer, StaffUser
@@ -40,9 +40,9 @@ from app.modules.finance.models import Expense, ExpenseCategory, ExpenseSource
 from app.modules.finance.service import compute_financial_summary
 from app.modules.hr.models import SalaryRecord, SalaryRecordStatus
 from app.modules.inventory.models import MovementType, StockMovement
-from app.modules.invoicing.models import Invoice, InvoiceItem
+from app.modules.invoicing.models import CreditNote, Invoice, InvoiceItem
 from app.modules.payments.models import Payment, PaymentMethod, PaymentStatus
-from app.modules.sales.models import Purchase, PurchaseItem, Sale, SaleItem
+from app.modules.sales.models import Purchase, PurchaseItem, Sale, SaleItem, SaleReturn
 
 PAGE_SIZE_MAX = 500
 EXPORT_CHUNK = 1000
@@ -75,6 +75,7 @@ def get_sales_report(
 
     base_q = (
         db.query(Sale)
+        .options(selectinload(Sale.returns), selectinload(Sale.customer))
         .filter(Sale.created_at >= start_dt, Sale.created_at <= end_dt)
     )
     total = base_q.count()
@@ -97,6 +98,18 @@ def get_sales_report(
         ).where(Sale.created_at >= start_dt, Sale.created_at <= end_dt)
     ).one()
 
+    # Returns & refunds aggregates over full range
+    returns_agg = db.execute(
+        select(
+            func.coalesce(func.sum(SaleReturn.total_refund_amount), Decimal("0.00")).label("total_refunds"),
+            func.count(SaleReturn.id).label("returns_count"),
+        ).where(SaleReturn.created_at >= start_dt, SaleReturn.created_at <= end_dt)
+    ).one()
+
+    total_refunds = quantize_money(returns_agg.total_refunds)
+    gross_revenue = quantize_money(agg.total_revenue)
+    net_revenue = quantize_money(gross_revenue - total_refunds, allow_negative=True)
+
     return {
         "report_type": "sales",
         "start_date": str(start_date),
@@ -110,13 +123,18 @@ def get_sales_report(
             "total_subtotal": str(quantize_money(agg.total_subtotal)),
             "total_discount": str(quantize_money(agg.total_discount)),
             "total_tax": str(quantize_money(agg.total_tax)),
-            "total_revenue": str(quantize_money(agg.total_revenue)),
+            "total_revenue": str(gross_revenue),
+            "total_refunds": str(total_refunds),
+            "total_returns_count": int(returns_agg.returns_count),
+            "net_revenue": str(net_revenue),
         },
         "rows": [_sale_row(s) for s in rows],
     }
 
 
 def _sale_row(s: Sale) -> Dict[str, Any]:
+    returned_amount = sum((r.total_refund_amount for r in (s.returns or [])), Decimal("0.00"))
+    net_amount = quantize_money(s.total_amount - returned_amount, allow_negative=True)
     return {
         "id": str(s.id),
         "invoice_number": s.invoice_number,
@@ -127,6 +145,8 @@ def _sale_row(s: Sale) -> Dict[str, Any]:
         "discount_amount": str(quantize_money(s.discount_amount)),
         "tax_amount": str(quantize_money(s.tax_amount)),
         "total_amount": str(quantize_money(s.total_amount)),
+        "returned_amount": str(quantize_money(returned_amount)),
+        "net_amount": str(net_amount),
         "status": s.status,
         "payment_method": s.payment_method,
     }
@@ -139,6 +159,7 @@ def iter_sales_rows(db: Session, start_date: date, end_date: date) -> Iterator[D
     while True:
         chunk = (
             db.query(Sale)
+            .options(selectinload(Sale.returns), selectinload(Sale.customer))
             .filter(Sale.created_at >= start_dt, Sale.created_at <= end_dt)
             .order_by(Sale.created_at.asc())
             .offset(offset)
@@ -842,6 +863,46 @@ def get_gst_report(
         )
     ).one()
 
+    # Credit notes issued in period
+    cn_agg = db.execute(
+        select(
+            func.coalesce(func.sum(CreditNote.subtotal_refunded), Decimal("0.00")).label("taxable_refunded"),
+            func.coalesce(func.sum(CreditNote.cgst_refunded), Decimal("0.00")).label("cgst_refunded"),
+            func.coalesce(func.sum(CreditNote.sgst_refunded), Decimal("0.00")).label("sgst_refunded"),
+            func.coalesce(func.sum(CreditNote.igst_refunded), Decimal("0.00")).label("igst_refunded"),
+            func.coalesce(func.sum(CreditNote.total_tax_refunded), Decimal("0.00")).label("tax_refunded"),
+            func.coalesce(func.sum(CreditNote.grand_total_refunded), Decimal("0.00")).label("grand_refunded"),
+            func.count(CreditNote.id).label("count"),
+        ).where(
+            CreditNote.credit_note_date >= start_date,
+            CreditNote.credit_note_date <= end_date,
+        )
+    ).one()
+
+    gross_taxable = quantize_money(agg.taxable_value)
+    cn_taxable = quantize_money(cn_agg.taxable_refunded)
+    net_taxable = quantize_money(gross_taxable - cn_taxable, allow_negative=True)
+
+    gross_cgst = quantize_money(agg.cgst)
+    cn_cgst = quantize_money(cn_agg.cgst_refunded)
+    net_cgst = quantize_money(gross_cgst - cn_cgst, allow_negative=True)
+
+    gross_sgst = quantize_money(agg.sgst)
+    cn_sgst = quantize_money(cn_agg.sgst_refunded)
+    net_sgst = quantize_money(gross_sgst - cn_sgst, allow_negative=True)
+
+    gross_igst = quantize_money(agg.igst)
+    cn_igst = quantize_money(cn_agg.igst_refunded)
+    net_igst = quantize_money(gross_igst - cn_igst, allow_negative=True)
+
+    gross_tax = quantize_money(agg.total_tax)
+    cn_tax = quantize_money(cn_agg.tax_refunded)
+    net_tax = quantize_money(gross_tax - cn_tax, allow_negative=True)
+
+    gross_grand = quantize_money(agg.grand_total)
+    cn_grand = quantize_money(cn_agg.grand_refunded)
+    net_grand = quantize_money(gross_grand - cn_grand, allow_negative=True)
+
     return {
         "report_type": "gst",
         "start_date": str(start_date),
@@ -852,12 +913,25 @@ def get_gst_report(
         "total_pages": max(1, (total + page_size - 1) // page_size),
         "summary": {
             "total_invoices": int(agg.count),
-            "total_taxable_value": str(quantize_money(agg.taxable_value)),
-            "total_cgst": str(quantize_money(agg.cgst)),
-            "total_sgst": str(quantize_money(agg.sgst)),
-            "total_igst": str(quantize_money(agg.igst)),
-            "total_tax": str(quantize_money(agg.total_tax)),
-            "total_grand_total": str(quantize_money(agg.grand_total)),
+            "total_taxable_value": str(gross_taxable),
+            "total_cgst": str(gross_cgst),
+            "total_sgst": str(gross_sgst),
+            "total_igst": str(gross_igst),
+            "total_tax": str(gross_tax),
+            "total_grand_total": str(gross_grand),
+            "credit_notes_count": int(cn_agg.count),
+            "credit_notes_taxable_value": str(cn_taxable),
+            "credit_notes_cgst": str(cn_cgst),
+            "credit_notes_sgst": str(cn_sgst),
+            "credit_notes_igst": str(cn_igst),
+            "credit_notes_tax_refunded": str(cn_tax),
+            "credit_notes_grand_total": str(cn_grand),
+            "net_taxable_value": str(net_taxable),
+            "net_cgst": str(net_cgst),
+            "net_sgst": str(net_sgst),
+            "net_igst": str(net_igst),
+            "net_tax_liability": str(net_tax),
+            "net_grand_total": str(net_grand),
         },
         "rows": [_gst_row(inv) for inv in rows],
     }
@@ -927,7 +1001,10 @@ def get_profit_loss_report(
     monthly_rows = []
     totals = {
         "revenue": Decimal("0.00"),
+        "returns_refunded": Decimal("0.00"),
+        "net_revenue": Decimal("0.00"),
         "invoiced_revenue": Decimal("0.00"),
+        "credit_notes_refunded": Decimal("0.00"),
         "cost_of_goods": Decimal("0.00"),
         "expenses": Decimal("0.00"),
         "gross_profit": Decimal("0.00"),
@@ -939,7 +1016,10 @@ def get_profit_loss_report(
         row = {
             "period": period_str,
             "revenue": str(summary.revenue),
+            "returns_refunded": str(summary.returns_refunded),
+            "net_revenue": str(summary.net_revenue),
             "invoiced_revenue": str(summary.invoiced_revenue),
+            "credit_notes_refunded": str(summary.credit_notes_refunded),
             "cost_of_goods": str(summary.cost_of_goods),
             "expenses": str(summary.expenses),
             "gross_profit": str(summary.gross_profit),
@@ -947,7 +1027,10 @@ def get_profit_loss_report(
         }
         monthly_rows.append(row)
         totals["revenue"] = quantize_money(totals["revenue"] + summary.revenue, allow_negative=True)
+        totals["returns_refunded"] = quantize_money(totals["returns_refunded"] + summary.returns_refunded, allow_negative=True)
+        totals["net_revenue"] = quantize_money(totals["net_revenue"] + summary.net_revenue, allow_negative=True)
         totals["invoiced_revenue"] = quantize_money(totals["invoiced_revenue"] + summary.invoiced_revenue, allow_negative=True)
+        totals["credit_notes_refunded"] = quantize_money(totals["credit_notes_refunded"] + summary.credit_notes_refunded, allow_negative=True)
         totals["cost_of_goods"] = quantize_money(totals["cost_of_goods"] + summary.cost_of_goods, allow_negative=True)
         totals["expenses"] = quantize_money(totals["expenses"] + summary.expenses, allow_negative=True)
         totals["gross_profit"] = quantize_money(totals["gross_profit"] + summary.gross_profit, allow_negative=True)

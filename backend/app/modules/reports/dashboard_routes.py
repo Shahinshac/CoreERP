@@ -12,7 +12,7 @@ from app.modules.auth.dependencies import get_current_staff
 from app.modules.auth.models import StaffUser
 from app.modules.catalog.models import Product
 from app.modules.payments.models import Payment, PaymentStatus
-from app.modules.sales.models import Sale
+from app.modules.sales.models import Sale, SaleReturn
 from app.modules.support.models import SupportTicket
 
 dashboard_router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -23,6 +23,9 @@ _CACHE: dict[str, Any] = {"expires_at": 0.0, "data": None}
 class TodaySummaryResponse(BaseModel):
     date: str
     total_sales: Decimal
+    gross_sales: Decimal = Decimal("0.00")
+    returns_refunded: Decimal = Decimal("0.00")
+    returns_count: int = 0
     sales_count: int
     cash_collected: Decimal
     payment_method_totals: dict[str, Decimal]
@@ -58,8 +61,21 @@ def get_today_summary(
         )
         .all()
     )
-    total_sales = sum((s.total_amount for s in sales), Decimal("0.00"))
+    gross_sales = sum((s.total_amount for s in sales), Decimal("0.00"))
     sales_count = len(sales)
+
+    # Returns & refunds today
+    returns_today = (
+        db.query(SaleReturn)
+        .filter(
+            SaleReturn.created_at >= start_dt,
+            SaleReturn.created_at <= end_dt,
+        )
+        .all()
+    )
+    returns_refunded = sum((r.total_refund_amount for r in returns_today), Decimal("0.00"))
+    returns_count = len(returns_today)
+    net_sales = max(Decimal("0.00"), quantize_money(gross_sales - returns_refunded))
 
     # Unique customers served today (count distinct known customers + walk-ins)
     known_customers = set(s.customer_id for s in sales if s.customer_id is not None)
@@ -99,7 +115,10 @@ def get_today_summary(
 
     res = TodaySummaryResponse(
         date=str(today),
-        total_sales=quantize_money(total_sales),
+        total_sales=net_sales,
+        gross_sales=quantize_money(gross_sales),
+        returns_refunded=quantize_money(returns_refunded),
+        returns_count=returns_count,
         sales_count=sales_count,
         cash_collected=cash_collected,
         payment_method_totals={k: quantize_money(v) for k, v in payment_totals.items()},

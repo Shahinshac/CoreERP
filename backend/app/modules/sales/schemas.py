@@ -184,6 +184,8 @@ class SaleReturnResponse(BaseModel):
     total_refund_amount: Decimal
     reason: str | None
     items: list[ReturnItemResponse]
+    credit_note_id: uuid.UUID | None = None
+    credit_note_number: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

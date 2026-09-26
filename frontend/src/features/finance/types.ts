@@ -49,7 +49,10 @@ export interface ExpenseListResponse {
 export interface FinancialSummary {
   period: string; // YYYY-MM
   revenue: string; // Primary Cash Revenue
+  returns_refunded?: string; // Total product returns & refunds in period
+  net_revenue?: string; // Net Revenue (revenue - returns_refunded)
   invoiced_revenue: string; // Accrual Revenue
+  credit_notes_refunded?: string;
   cost_of_goods: string;
   expenses: string;
   expenses_breakdown: Record<string, string>;

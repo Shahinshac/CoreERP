@@ -104,7 +104,9 @@ function fmtCurrency(val: string | number | null | undefined): string {
 const COLUMN_MAPS: Partial<Record<Tab, { key: string; label: string; currency?: boolean }[]>> = {
   "profit-loss": [
     { key: "period", label: "Period" },
-    { key: "revenue", label: "Revenue (Cash)", currency: true },
+    { key: "revenue", label: "Gross Revenue", currency: true },
+    { key: "returns_refunded", label: "Refunds", currency: true },
+    { key: "net_revenue", label: "Net Revenue", currency: true },
     { key: "invoiced_revenue", label: "Invoiced Rev.", currency: true },
     { key: "cost_of_goods", label: "COGS", currency: true },
     { key: "expenses", label: "Expenses", currency: true },
@@ -118,7 +120,9 @@ const COLUMN_MAPS: Partial<Record<Tab, { key: string; label: string; currency?: 
     { key: "subtotal", label: "Subtotal", currency: true },
     { key: "discount_amount", label: "Discount", currency: true },
     { key: "tax_amount", label: "Tax", currency: true },
-    { key: "total_amount", label: "Total", currency: true },
+    { key: "total_amount", label: "Gross Total", currency: true },
+    { key: "returned_amount", label: "Refunded", currency: true },
+    { key: "net_amount", label: "Net Total", currency: true },
     { key: "status", label: "Status" },
     { key: "payment_method", label: "Method" },
   ],
@@ -325,7 +329,7 @@ function ExportButton({
 function PLChart({ rows }: { rows: Record<string, string | number | boolean | null>[] }) {
   const data = rows.map((r) => ({
     period: fmt(r.period),
-    Revenue: parseFloat(String(r.revenue || 0)),
+    "Net Revenue": parseFloat(String(r.net_revenue ?? r.revenue ?? 0)),
     COGS: parseFloat(String(r.cost_of_goods || 0)),
     Expenses: parseFloat(String(r.expenses || 0)),
     "Net Profit": parseFloat(String(r.net_profit || 0)),
@@ -348,7 +352,7 @@ function PLChart({ rows }: { rows: Record<string, string | number | boolean | nu
             formatter={(v: any) => [`₹${Number(v || 0).toLocaleString("en-IN")}`, ""]}
           />
           <Legend wrapperStyle={{ color: "#C4C4C8", fontSize: 11 }} />
-          <Bar dataKey="Revenue" fill="#3B82F6" radius={[3, 3, 0, 0]} />
+          <Bar dataKey="Net Revenue" fill="#3B82F6" radius={[3, 3, 0, 0]} />
           <Bar dataKey="COGS" fill="#F59E0B" radius={[3, 3, 0, 0]} />
           <Bar dataKey="Expenses" fill="#EF4444" radius={[3, 3, 0, 0]} />
           <Bar dataKey="Net Profit" fill="#10B981" radius={[3, 3, 0, 0]} />
@@ -544,7 +548,9 @@ export const ReportsPage: React.FC = () => {
     switch (activeTab) {
       case "profit-loss":
         return [
-          { label: "Cash Revenue", value: String(s.revenue ?? "0.00"), currency: true },
+          { label: "Gross Cash Revenue", value: String(s.revenue ?? "0.00"), currency: true },
+          { label: "Refunds", value: String(s.returns_refunded ?? "0.00"), currency: true },
+          { label: "Net Revenue", value: String(s.net_revenue ?? s.revenue ?? "0.00"), currency: true, highlight: true },
           { label: "Invoiced Revenue", value: String(s.invoiced_revenue ?? "0.00"), currency: true },
           { label: "COGS", value: String(s.cost_of_goods ?? "0.00"), currency: true },
           { label: "Expenses", value: String(s.expenses ?? "0.00"), currency: true },
@@ -553,19 +559,22 @@ export const ReportsPage: React.FC = () => {
         ]
       case "sales":
         return [
-          { label: "Total Sales", value: String(s.total_sales ?? 0) },
-          { label: "Revenue", value: String(s.total_revenue ?? "0.00"), currency: true, highlight: true },
+          { label: "Total Orders", value: String(s.total_sales ?? 0) },
+          { label: "Gross Revenue", value: String(s.total_revenue ?? "0.00"), currency: true },
+          { label: "Refunds Issued", value: String(s.total_refunds ?? "0.00"), currency: true },
+          { label: "Net Revenue", value: String(s.net_revenue ?? s.total_revenue ?? "0.00"), currency: true, highlight: true },
           { label: "Tax Collected", value: String(s.total_tax ?? "0.00"), currency: true },
           { label: "Discounts Given", value: String(s.total_discount ?? "0.00"), currency: true },
         ]
       case "gst":
         return [
           { label: "Invoices", value: String(s.total_invoices ?? 0) },
-          { label: "Taxable Value", value: String(s.total_taxable_value ?? "0.00"), currency: true },
-          { label: "CGST", value: String(s.total_cgst ?? "0.00"), currency: true },
-          { label: "SGST", value: String(s.total_sgst ?? "0.00"), currency: true },
-          { label: "IGST", value: String(s.total_igst ?? "0.00"), currency: true },
-          { label: "Total Tax", value: String(s.total_tax ?? "0.00"), currency: true, highlight: true },
+          { label: "Gross Taxable", value: String(s.total_taxable_value ?? "0.00"), currency: true },
+          { label: "Credit Notes (Taxable)", value: String(s.credit_notes_taxable_value ?? "0.00"), currency: true },
+          { label: "Net Taxable Turnover", value: String(s.net_taxable_value ?? s.total_taxable_value ?? "0.00"), currency: true },
+          { label: "Gross Tax", value: String(s.total_tax ?? "0.00"), currency: true },
+          { label: "Credit Notes (Tax)", value: String(s.credit_notes_tax_refunded ?? "0.00"), currency: true },
+          { label: "Net Tax Liability", value: String(s.net_tax_liability ?? s.total_tax ?? "0.00"), currency: true, highlight: true },
         ]
       case "purchases":
         return [

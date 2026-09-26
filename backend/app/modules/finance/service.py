@@ -12,9 +12,9 @@ from app.modules.emi.models import EmiInstallment, EmiInstallmentStatus, EmiPlan
 from app.modules.finance.models import Expense, ExpenseCategory
 from app.modules.finance.schemas import FinancialSummaryResponse
 from app.modules.inventory.models import MovementType, StockMovement
-from app.modules.invoicing.models import Invoice
+from app.modules.invoicing.models import CreditNote, Invoice
 from app.modules.payments.models import Payment, PaymentStatus
-from app.modules.sales.models import Purchase
+from app.modules.sales.models import Purchase, SaleReturn
 
 
 def parse_period_range(period_str: str) -> tuple[int, int, date, date, datetime, datetime]:
@@ -43,19 +43,23 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
     Methodology:
     1. Primary Revenue: Cash Accounting basis.
        Sum of all paid payments received in the period (Payment.status == 'paid', Payment.created_at in range).
-    2. Invoiced Revenue: Accrual Accounting metric.
+    2. Returns & Refunds: Contra-revenue.
+       Sum of all product return refunds issued in period (SaleReturn.total_refund_amount in range).
+       Net Revenue = Primary Revenue - Returns & Refunds.
+    3. Invoiced Revenue: Accrual Accounting metric.
        Sum of grand_total of all non-cancelled invoices issued in the period (Invoice.invoice_date in range).
-    3. Cost of Goods / Purchase Cost:
-       Sum of supplier purchases (Purchase.total_amount) plus direct stock-in movements valued at product purchase_price.
-    4. Expenses:
+    4. Cost of Goods / Purchase Cost:
+       Sum of supplier purchases (Purchase.total_amount) plus direct stock-in movements valued at product purchase_price
+       (explicitly excluding sale returns and purchase references to avoid double-counting / distortion).
+    5. Expenses:
        Sum of all non-deleted operating expenses (manual + system_salary).
-    5. Gross Profit:
-       Primary Revenue - Cost of Goods.
-    6. Net Profit:
+    6. Gross Profit:
+       Net Revenue - Cost of Goods.
+    7. Net Profit:
        Gross Profit - Expenses.
-    7. Outstanding Receivables:
+    8. Outstanding Receivables:
        Sum of remaining unpaid balances across all active non-cancelled invoices.
-    8. EMI Receivables:
+    9. EMI Receivables:
        Sum of remaining unpaid installment balances across active and defaulted EMI plans.
     """
     _, _, start_date, end_date, start_dt, end_dt = parse_period_range(period_str)
@@ -68,6 +72,14 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
     )
     cash_revenue = quantize_money(db.execute(cash_rev_stmt).scalar() or Decimal("0.00"))
 
+    # Sales Returns / Refunds in period
+    returns_stmt = select(func.coalesce(func.sum(SaleReturn.total_refund_amount), Decimal("0.00"))).where(
+        SaleReturn.created_at >= start_dt,
+        SaleReturn.created_at <= end_dt,
+    )
+    returns_refunded = quantize_money(db.execute(returns_stmt).scalar() or Decimal("0.00"))
+    net_revenue = quantize_money(cash_revenue - returns_refunded, allow_negative=True)
+
     # Invoiced Revenue: Accrual basis (active invoices issued in period)
     invoiced_rev_stmt = select(func.coalesce(func.sum(Invoice.grand_total), Decimal("0.00"))).where(
         Invoice.is_cancelled == False,
@@ -75,6 +87,13 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
         Invoice.invoice_date <= end_date,
     )
     invoiced_revenue = quantize_money(db.execute(invoiced_rev_stmt).scalar() or Decimal("0.00"))
+
+    # Credit notes issued against invoices in period
+    cn_stmt = select(func.coalesce(func.sum(CreditNote.grand_total_refunded), Decimal("0.00"))).where(
+        CreditNote.credit_note_date >= start_date,
+        CreditNote.credit_note_date <= end_date,
+    )
+    credit_notes_refunded = quantize_money(db.execute(cn_stmt).scalar() or Decimal("0.00"))
 
     # 2. Cost of Goods / Purchase Cost
     # A. Supplier Purchases in period
@@ -85,13 +104,14 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
     )
     purchases_cost = quantize_money(db.execute(purchases_stmt).scalar() or Decimal("0.00"))
 
-    # B. Direct Stock In movements in period (excluding supplier purchases to prevent double-counting)
+    # B. Direct Stock In movements in period (excluding supplier purchases and customer sale returns to prevent double-counting)
     stock_in_stmt = (
         select(func.coalesce(func.sum(StockMovement.quantity * Product.purchase_price), Decimal("0.00")))
         .join(Product, StockMovement.product_id == Product.id)
         .where(
             StockMovement.movement_type == MovementType.IN,
             func.lower(StockMovement.reference_type) != "purchase",
+            func.lower(StockMovement.reference_type) != "sale_return",
             StockMovement.created_at >= start_dt,
             StockMovement.created_at <= end_dt,
         )
@@ -125,7 +145,7 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
         expenses_breakdown[cat_name] = quantize_money(cat_amt)
 
     # 4. Gross Profit & Net Profit
-    gross_profit = quantize_money(cash_revenue - total_cost_of_goods, allow_negative=True)
+    gross_profit = quantize_money(net_revenue - total_cost_of_goods, allow_negative=True)
     net_profit = quantize_money(gross_profit - total_expenses, allow_negative=True)
 
     # 5. Outstanding Receivables (Invoices)
@@ -167,7 +187,10 @@ def compute_financial_summary(db: Session, period_str: str) -> FinancialSummaryR
     return FinancialSummaryResponse(
         period=period_str,
         revenue=cash_revenue,
+        returns_refunded=returns_refunded,
+        net_revenue=net_revenue,
         invoiced_revenue=invoiced_revenue,
+        credit_notes_refunded=credit_notes_refunded,
         cost_of_goods=total_cost_of_goods,
         expenses=total_expenses,
         expenses_breakdown=expenses_breakdown,

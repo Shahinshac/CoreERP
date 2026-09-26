@@ -176,10 +176,19 @@ export const ExpensesPage: React.FC = () => {
   const pnlComparisonData = summary
     ? [
         {
-          name: "Revenue (Cash)",
-          amount: parseFloat(summary.revenue) || 0,
+          name: parseFloat(summary.returns_refunded || "0") > 0 ? "Net Revenue" : "Revenue",
+          amount: parseFloat(summary.net_revenue || summary.revenue) || 0,
           fill: "#10b981", // emerald
         },
+        ...(parseFloat(summary.returns_refunded || "0") > 0
+          ? [
+              {
+                name: "Refunds",
+                amount: parseFloat(summary.returns_refunded || "0"),
+                fill: "#f43f5e", // rose
+              },
+            ]
+          : []),
         {
           name: "COGS",
           amount: parseFloat(summary.cost_of_goods) || 0,
@@ -276,16 +285,18 @@ export const ExpensesPage: React.FC = () => {
         <Card className="border-white/[0.14] bg-card shadow-none">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-              <span>Cash Revenue</span>
+              <span>{parseFloat(summary?.returns_refunded || "0") > 0 ? "Net Cash Revenue" : "Cash Revenue"}</span>
               <DollarSign className="w-4 h-4 text-emerald-400" />
             </div>
             <CardTitle className="text-2xl font-bold text-zinc-100">
-              {isSummaryLoading ? "..." : fmtMoney(summary?.revenue)}
+              {isSummaryLoading ? "..." : fmtMoney(summary?.net_revenue || summary?.revenue)}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <p className="text-xs text-zinc-400">
-              Cash basis receipts received in {selectedPeriod}
+              {parseFloat(summary?.returns_refunded || "0") > 0
+                ? `Gross: ${fmtMoney(summary?.revenue)} • Refunds: -${fmtMoney(summary?.returns_refunded)}`
+                : `Cash basis receipts received in ${selectedPeriod}`}
             </p>
             <div className="mt-2 text-[11px] text-zinc-400 flex items-center justify-between border-t border-white/[0.08] pt-1.5">
               <span>Invoiced (Accrual):</span>

@@ -68,11 +68,14 @@ class ExpenseListResponse(BaseModel):
 class FinancialSummaryResponse(BaseModel):
     period: str
     revenue: Decimal = Field(..., description="Primary Cash Revenue (paid payments in period)")
+    returns_refunded: Decimal = Field(default=Decimal("0.00"), description="Total product returns and refunds in period")
+    net_revenue: Decimal = Field(default=Decimal("0.00"), description="Net Revenue after returns (revenue - returns_refunded)")
     invoiced_revenue: Decimal = Field(..., description="Accrual Revenue (invoices issued in period)")
+    credit_notes_refunded: Decimal = Field(default=Decimal("0.00"), description="Total credit notes issued against invoices in period")
     cost_of_goods: Decimal = Field(..., description="Inventory purchase cost / stock intake in period")
     expenses: Decimal = Field(..., description="Total operating expenses (manual + system salary) in period")
     expenses_breakdown: Dict[str, Decimal] = Field(default_factory=dict, description="Category-wise expense breakdown")
-    gross_profit: Decimal = Field(..., description="Gross Profit (revenue - cost_of_goods)")
+    gross_profit: Decimal = Field(..., description="Gross Profit (net_revenue - cost_of_goods)")
     net_profit: Decimal = Field(..., description="Net Profit (gross_profit - expenses)")
     outstanding_receivables: Decimal = Field(..., description="Unpaid / partial invoice balances")
     emi_receivables: Decimal = Field(..., description="Unpaid EMI installment balances")
