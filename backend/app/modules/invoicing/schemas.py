@@ -60,6 +60,32 @@ class CreditNoteResponse(BaseModel):
     items: List[CreditNoteItemResponse] = []
 
 
+class EmiInstallmentBriefResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    installment_number: int
+    due_date: date
+    amount_due: Decimal
+    amount_paid: Decimal
+    status: str
+
+
+class EmiPlanBriefResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    principal: Decimal
+    down_payment: Decimal
+    number_of_installments: int
+    interest_rate: Optional[Decimal] = None
+    interest_amount: Decimal
+    total_financed: Decimal
+    installment_amount: Decimal
+    start_date: date
+    status: str
+    installments: List[EmiInstallmentBriefResponse] = []
+
+
 class InvoiceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -96,12 +122,14 @@ class InvoiceResponse(BaseModel):
     grand_total: Decimal
 
     payment_status: str
+    payment_method: Optional[str] = None
     is_cancelled: bool
     notes: Optional[str] = None
     created_at: datetime
 
     items: List[InvoiceItemResponse] = []
     credit_notes: List[CreditNoteResponse] = []
+    emi_plan: Optional[EmiPlanBriefResponse] = None
 
 
 class InvoiceListResponse(BaseModel):

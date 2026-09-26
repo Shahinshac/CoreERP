@@ -154,7 +154,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   const markupPct = pPrice > 0 ? (netProfit / pPrice) * 100 : 0
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} contentClassName="max-w-2xl max-h-[90vh] overflow-y-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         <DialogHeader>
           <DialogTitle>{product ? "Edit Product" : "Create New Product"}</DialogTitle>
@@ -165,9 +165,9 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div className="col-span-2 space-y-1">
-            <label className="font-medium text-slate-700">Product Name *</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+          <div className="col-span-1 sm:col-span-2 space-y-1">
+            <label className="font-medium text-foreground">Product Name *</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -177,7 +177,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">SKU Code *</label>
+            <label className="font-medium text-foreground">SKU Code *</label>
             <Input
               value={sku}
               onChange={(e) => setSku(e.target.value)}
@@ -187,7 +187,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Barcode</label>
+            <label className="font-medium text-foreground">Barcode</label>
             <Input
               value={barcode}
               onChange={(e) => setBarcode(e.target.value)}
@@ -196,7 +196,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">HSN / SAC Code</label>
+            <label className="font-medium text-foreground">HSN / SAC Code</label>
             <Input
               value={hsnCode}
               onChange={(e) => setHsnCode(e.target.value)}
@@ -205,7 +205,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Category *</label>
+            <label className="font-medium text-foreground">Category *</label>
             <Select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
@@ -223,7 +223,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Brand *</label>
+            <label className="font-medium text-foreground">Brand *</label>
             <Select
               value={brandId}
               onChange={(e) => setBrandId(e.target.value)}
@@ -242,7 +242,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="font-medium text-slate-700 dark:text-zinc-200">
+              <label className="font-medium text-foreground">
                 Purchase Cost (₹) *
               </label>
             </div>
@@ -259,7 +259,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
 
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="font-medium text-slate-700 dark:text-zinc-200">
+              <label className="font-medium text-foreground">
                 Selling Price (₹) *
               </label>
               <span className="text-[10px] text-emerald-400 font-mono font-medium">
@@ -278,7 +278,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700 dark:text-zinc-200">GST Rate (%)</label>
+            <label className="font-medium text-foreground">GST Rate (%)</label>
             <NumericInput
               value={gstRate}
               onChange={setGstRate}
@@ -290,7 +290,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700 dark:text-zinc-200">Unit of Measurement</label>
+            <label className="font-medium text-foreground">Unit of Measurement</label>
             <Select value={unit} onChange={(e) => setUnit(e.target.value)}>
               <option value="pcs">Pieces (pcs)</option>
               <option value="box">Box (box)</option>
@@ -303,7 +303,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
 
           {/* Real-time Detailed Pricing, GST & Profit Breakdown */}
           {(sPrice > 0 || pPrice > 0) && (
-            <div className="col-span-2 rounded-xl border border-white/[0.14] bg-[#141418] p-3.5 space-y-3 shadow-sm">
+            <div className="col-span-1 sm:col-span-2 rounded-xl border border-white/[0.14] bg-[#141418] p-3.5 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Calculator className="h-4 w-4 text-primary" />
@@ -403,8 +403,8 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
             </div>
           )}
 
-          <div className="col-span-2 space-y-1">
-            <label className="font-medium text-slate-700">Minimum Stock Alert Threshold</label>
+          <div className="col-span-1 sm:col-span-2 space-y-1">
+            <label className="font-medium text-foreground">Minimum Stock Alert Threshold</label>
             <NumericInput
               value={minStock}
               onChange={setMinStock}
@@ -412,12 +412,12 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               suffix={unit}
               placeholder="0.000"
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Flags low-stock badge when current inventory falls to or below this quantity.
             </p>
           </div>
 
-          <div className="col-span-2 flex items-center gap-2 pt-1">
+          <div className="col-span-1 sm:col-span-2 flex items-center gap-2 pt-1">
             <input
               type="checkbox"
               id="isPinnedProduct"
@@ -425,7 +425,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               onChange={(e) => setIsPinned(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
             />
-            <label htmlFor="isPinnedProduct" className="text-sm font-medium text-slate-700 cursor-pointer">
+            <label htmlFor="isPinnedProduct" className="text-sm font-medium text-foreground cursor-pointer">
               Pin to POS Quick-Picks (shows at the top of POS terminal)
             </label>
           </div>

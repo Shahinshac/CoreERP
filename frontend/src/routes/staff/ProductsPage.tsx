@@ -124,8 +124,8 @@ export function ProductsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Products & Catalog</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Products & Catalog</h1>
+          <p className="text-sm text-muted-foreground">
             Manage product pricing, SKU registry, and inventory levels with financial precision.
           </p>
         </div>

@@ -49,6 +49,28 @@ export interface CreditNote {
   items: CreditNoteItem[]
 }
 
+export interface EmiInstallmentBrief {
+  installment_number: number
+  due_date: string
+  amount_due: string
+  amount_paid: string
+  status: string
+}
+
+export interface EmiPlanBrief {
+  id: string
+  principal: string
+  down_payment: string
+  number_of_installments: number
+  interest_rate: string | null
+  interest_amount: string
+  total_financed: string
+  installment_amount: string
+  start_date: string
+  status: string
+  installments: EmiInstallmentBrief[]
+}
+
 export interface Invoice {
   id: string
   invoice_number: string
@@ -83,12 +105,14 @@ export interface Invoice {
   grand_total: string
 
   payment_status: "unpaid" | "paid" | "partially_paid" | "cancelled"
+  payment_method?: string | null
   is_cancelled: boolean
   notes: string | null
   created_at: string
 
   items: InvoiceItem[]
   credit_notes: CreditNote[]
+  emi_plan?: EmiPlanBrief | null
 }
 
 export interface InvoiceListResponse {

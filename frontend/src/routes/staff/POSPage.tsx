@@ -23,6 +23,7 @@ import {
   Zap,
   Layers,
   Calendar,
+  ArrowRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -286,6 +287,10 @@ export function POSPage() {
 
   const parsedOrderDiscount = parseFloat(orderDiscount) || 0
   const grandTotal = Math.max(0, itemsSubtotal - parsedOrderDiscount)
+  const totalItemsCount = cart.reduce((acc, item) => {
+    const qty = parseFloat(item.quantity) || 0
+    return acc + qty
+  }, 0)
 
   const isSplitMode = paymentMethod === "split" || paymentMethod === "mixed"
 
@@ -524,8 +529,8 @@ export function POSPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Point of Sale (POS)</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Point of Sale (POS)</h1>
+          <p className="text-sm text-muted-foreground">
             Rapid checkout terminal with atomic stock decrements and server-enforced pricing.
           </p>
         </div>
@@ -793,7 +798,7 @@ export function POSPage() {
         {/* ==========================================
             RIGHT PANEL: ACTIVE CART & CHECKOUT (5 COLS)
         ========================================== */}
-        <div className="lg:col-span-5 space-y-4">
+        <div id="pos-cart-panel" className="lg:col-span-5 space-y-4">
           <div className="bg-card rounded-xl border border-white/[0.14] shadow-none p-4 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.10]">
               <div className="flex items-center gap-2 font-semibold text-zinc-100 text-base">
@@ -1380,6 +1385,43 @@ export function POSPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Sticky Cart & Quick Checkout Bar */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-16 left-0 right-0 z-30 px-4 py-3 bg-zinc-950/95 backdrop-blur-md border-t border-white/[0.12] shadow-2xl flex items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <span className="text-[11px] text-zinc-400 font-medium">
+              {totalItemsCount} {totalItemsCount === 1 ? "item" : "items"} in cart
+            </span>
+            <span className="text-base font-black font-mono text-emerald-400">
+              ₹{grandTotal.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const cartEl = document.getElementById("pos-cart-panel")
+                cartEl?.scrollIntoView({ behavior: "smooth" })
+              }}
+              className="h-9 text-xs px-2.5 gap-1.5 border-white/[0.14] text-zinc-200"
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+              <span>Cart ({cart.length})</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleCheckout}
+              disabled={isCheckingOut || (isSplitMode && !isSplitReady) || (isEmiMode && !isEmiReady)}
+              className="h-9 px-3.5 text-xs font-bold bg-primary text-primary-foreground shadow-md gap-1.5"
+            >
+              <span>Pay ₹{grandTotal.toFixed(2)}</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

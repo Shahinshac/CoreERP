@@ -1,4 +1,5 @@
 import { apiClient, getAccessToken } from "@/lib/api"
+import { EmiPlanBrief } from "@/features/invoicing/api"
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
@@ -133,8 +134,10 @@ export interface PortalInvoiceDetail {
   total_tax: string | number
   grand_total: string | number
   payment_status: string
+  payment_method?: string | null
   is_cancelled: boolean
   items: InvoiceItemDetail[]
+  emi_plan?: EmiPlanBrief | null
 }
 
 export const portalApi = {

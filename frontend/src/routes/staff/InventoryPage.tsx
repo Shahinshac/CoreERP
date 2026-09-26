@@ -113,8 +113,8 @@ export function InventoryPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Inventory Ledger</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Inventory Ledger</h1>
+          <p className="text-sm text-muted-foreground">
             Append-only stock movements, low-stock alerts, and real-time inventory valuation.
           </p>
         </div>

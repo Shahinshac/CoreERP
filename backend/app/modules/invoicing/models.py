@@ -103,6 +103,15 @@ class Invoice(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     sale = relationship("app.modules.sales.models.Sale")
     customer = relationship("app.modules.auth.models.Customer")
     staff = relationship("app.modules.auth.models.StaffUser")
+    emi_plan = relationship("app.modules.emi.models.EmiPlan", back_populates="invoice", uselist=False)
+
+    @property
+    def payment_method(self) -> str | None:
+        if self.emi_plan:
+            return "emi"
+        if self.sale and self.sale.payment_method:
+            return self.sale.payment_method
+        return None
 
 
 class InvoiceItem(Base, UUIDPrimaryKeyMixin, CreatedAtMixin):

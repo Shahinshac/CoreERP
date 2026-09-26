@@ -3,8 +3,10 @@ import { useNavigate, useParams } from "react-router-dom"
 import {
   ArrowLeft,
   Building,
+  Calendar,
   CreditCard,
   Download,
+  ExternalLink,
   Printer,
   QrCode,
   RotateCcw,
@@ -123,10 +125,10 @@ export const InvoiceDetailPage: React.FC = () => {
             Back to Invoices
           </Button>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900 font-mono">
+            <h1 className="text-xl font-bold tracking-tight text-foreground font-mono">
               {invoice.invoice_number}
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Financial Year: {invoice.financial_year} • Issued on {new Date(invoice.invoice_date).toLocaleDateString()}
             </p>
           </div>
@@ -137,7 +139,7 @@ export const InvoiceDetailPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={handlePrint}
-            className="h-9 gap-1.5 text-slate-700"
+            className="h-9 gap-1.5"
           >
             <Printer className="h-4 w-4" />
             Print
@@ -148,7 +150,7 @@ export const InvoiceDetailPage: React.FC = () => {
             size="sm"
             onClick={handleDownloadPdf}
             disabled={isDownloading}
-            className="h-9 gap-1.5 text-slate-700"
+            className="h-9 gap-1.5"
           >
             <Download className="h-4 w-4" />
             {isDownloading ? "Streaming PDF..." : "Download Official PDF"}
@@ -459,10 +461,52 @@ export const InvoiceDetailPage: React.FC = () => {
           </div>
         )}
 
+        {/* EMI Financing Plan Card */}
+        {invoice.emi_plan && (
+          <div className="mt-6 pt-5 border-t border-border space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-foreground font-bold text-xs">
+                <Calendar className="h-4 w-4 text-sky-500" />
+                LINKED EMI FINANCING PLAN
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/staff/emi/${invoice.emi_plan?.id}`)}
+                className="h-7 text-xs gap-1.5 text-sky-600 border-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/40"
+              >
+                <span>View Full EMI Schedule & Collect</span>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 bg-sky-500/5 border border-sky-200/50 rounded-xl text-xs">
+              <div>
+                <span className="text-muted-foreground text-[10px] uppercase font-medium">Financed Principal</span>
+                <div className="font-mono font-bold text-foreground text-sm">₹{parseFloat(invoice.emi_plan.principal).toFixed(2)}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground text-[10px] uppercase font-medium">Down Payment</span>
+                <div className="font-mono font-bold text-emerald-600 text-sm">₹{parseFloat(invoice.emi_plan.down_payment).toFixed(2)}</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground text-[10px] uppercase font-medium">Monthly Installment</span>
+                <div className="font-mono font-bold text-sky-600 text-sm">₹{parseFloat(invoice.emi_plan.installment_amount).toFixed(2)}/mo</div>
+              </div>
+              <div>
+                <span className="text-muted-foreground text-[10px] uppercase font-medium">Tenure & Status</span>
+                <div className="font-medium text-foreground">
+                  {invoice.emi_plan.number_of_installments} Months • <Badge variant="outline" className="text-[10px] uppercase font-bold text-sky-600 border-sky-300">{invoice.emi_plan.status}</Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Payment History & Settlement Ledger */}
-        <div className="mt-6 pt-5 border-t border-slate-200 space-y-4">
+        <div className="mt-6 pt-5 border-t border-border space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-slate-800 font-bold text-xs">
+            <div className="flex items-center gap-2 text-foreground font-bold text-xs">
               <CreditCard className="h-4 w-4 text-emerald-600" />
               PAYMENT HISTORY & SETTLEMENT LEDGER
             </div>
@@ -513,38 +557,38 @@ export const InvoiceDetailPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {payments.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={p.id} className="hover:bg-muted/50 transition-colors">
                       <td className="py-2.5 px-3">
-                        <div className="font-semibold text-slate-800">
+                        <div className="font-semibold text-foreground">
                           {p.id.slice(0, 8)}...
                         </div>
-                        <div className="text-[10px] text-slate-400 font-sans">
+                        <div className="text-[10px] text-muted-foreground font-sans">
                           {new Date(p.created_at).toLocaleString()}
                         </div>
                       </td>
                       <td className="py-2.5 px-3 font-sans">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase bg-slate-100 text-slate-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase bg-muted text-foreground">
                           {p.method}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-600">
-                        {p.reference_id || <span className="text-slate-300 italic font-sans">Direct Cash / N/A</span>}
+                      <td className="py-2.5 px-3 text-muted-foreground">
+                        {p.reference_id || <span className="text-muted-foreground/60 italic font-sans">Direct Cash / N/A</span>}
                       </td>
                       <td className="py-2.5 px-3 text-center font-sans">
                         <Badge
                           variant="outline"
                           className={`text-[10px] uppercase font-bold ${
                             p.status === "paid"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400"
                               : p.status === "failed"
-                              ? "bg-rose-50 text-rose-700 border-rose-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
+                              ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400"
+                              : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400"
                           }`}
                         >
                           {p.status}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-3 text-right font-bold text-slate-900">
+                      <td className="py-2.5 px-3 text-right font-bold text-foreground font-mono">
                         ₹{parseFloat(p.amount).toFixed(2)}
                       </td>
                     </tr>

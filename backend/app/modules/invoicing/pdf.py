@@ -228,7 +228,8 @@ def generate_invoice_pdf(invoice: Invoice) -> io.BytesIO:
 
     supply_info = f"""
     <b>Payment & Supply Details:</b><br/>
-    Status: <b>PAID</b><br/>
+    Status: <b>{(invoice.payment_status or 'PAID').upper()}</b><br/>
+    Method: <b>{(invoice.payment_method or 'CASH').upper()}</b><br/>
     Taxation: <b>{"Inter-State (IGST)" if invoice.is_inter_state else "Intra-State (CGST + SGST)"}</b><br/>
     Financial Year: <b>{invoice.financial_year}</b>
     """
@@ -368,7 +369,26 @@ def generate_invoice_pdf(invoice: Invoice) -> io.BytesIO:
         ])
     )
     story.append(summary_block)
-    story.append(Spacer(1, 14))
+    story.append(Spacer(1, 10))
+
+    if getattr(invoice, "emi_plan", None):
+        plan = invoice.emi_plan
+        emi_box_text = f"""
+        <b>EMI FINANCING & REPAYMENT TERMS:</b> Financed Amount: <b>₹{plan.total_financed:.2f}</b> | Down Payment: <b>₹{plan.down_payment:.2f}</b> | Tenure: <b>{plan.number_of_installments} Months</b> | Monthly EMI: <b>₹{plan.installment_amount:.2f}</b> | Status: <b>{plan.status.upper()}</b>
+        """
+        emi_table = Table([[Paragraph(emi_box_text, legal_style)]], colWidths=[538])
+        emi_table.setStyle(
+            TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#0284c7")),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f0f9ff")),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ])
+        )
+        story.append(emi_table)
+        story.append(Spacer(1, 8))
 
     # 5. Terms, UPI, and Authorized Signatory Stamp
     footer_text = f"""

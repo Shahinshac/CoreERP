@@ -280,6 +280,41 @@ export const CustomerInvoiceDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* EMI Financing Callout */}
+        {invoice.emi_plan && (
+          <div className="border border-sky-500/30 bg-sky-500/10 rounded-xl p-4 space-y-3 mt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sky-400 font-bold text-sm">
+                <Calendar className="h-4 w-4" />
+                Financed via Consumer Installments (EMI)
+              </div>
+              <Link to="/portal/emi">
+                <Button size="sm" variant="outline" className="h-8 text-xs border-sky-500/30 text-sky-300 hover:bg-sky-500/20">
+                  View EMI & Pay Installments →
+                </Button>
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Financed Amount</span>
+                <span className="font-mono font-bold text-zinc-100 text-sm">₹{Number(invoice.emi_plan.total_financed).toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Down Payment</span>
+                <span className="font-mono font-bold text-emerald-400 text-sm">₹{Number(invoice.emi_plan.down_payment).toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Monthly EMI</span>
+                <span className="font-mono font-bold text-sky-300 text-sm">₹{Number(invoice.emi_plan.installment_amount).toFixed(2)}/mo</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[10px] uppercase">Tenure & Status</span>
+                <span className="font-medium text-zinc-200">{invoice.emi_plan.number_of_installments} Months • <Badge variant="outline" className="text-[10px] uppercase text-sky-400 border-sky-400/40">{invoice.emi_plan.status}</Badge></span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

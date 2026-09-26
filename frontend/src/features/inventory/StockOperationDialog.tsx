@@ -126,7 +126,7 @@ export const StockOperationDialog: React.FC<StockOperationDialogProps> = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} contentClassName="max-w-lg max-h-[90vh] overflow-y-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         <DialogHeader>
           <DialogTitle className="text-[#F5F5F7]">Stock Operation: {product.name}</DialogTitle>

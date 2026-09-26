@@ -31,6 +31,7 @@ from app.modules.invoicing.models import (
     InvoiceItem,
     InvoiceSequence,
 )
+from app.modules.emi.models import EmiPlan
 from app.modules.invoicing.pdf import generate_invoice_pdf
 from app.modules.invoicing.schemas import (
     CreditNoteCreateRequest,
@@ -119,12 +120,14 @@ def create_invoice_from_sale(
             detail=str(e),
         )
 
-    # Return with loaded items and credit notes
+    # Return with loaded items, credit notes, emi_plan, and sale
     stmt = (
         select(Invoice)
         .options(
             selectinload(Invoice.items),
             selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
         )
         .filter(Invoice.id == invoice.id)
     )
@@ -225,6 +228,8 @@ def list_invoices(
         .options(
             selectinload(Invoice.items),
             selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
         )
         .order_by(Invoice.created_at.desc())
     )
@@ -289,6 +294,8 @@ def get_invoice(
         .options(
             selectinload(Invoice.items),
             selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
         )
         .filter(Invoice.id == id)
     )
@@ -333,7 +340,12 @@ def get_invoice_pdf(
 
     stmt = (
         select(Invoice)
-        .options(selectinload(Invoice.items))
+        .options(
+            selectinload(Invoice.items),
+            selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
+        )
         .filter(Invoice.id == id)
     )
     invoice = db.execute(stmt).scalar_one_or_none()

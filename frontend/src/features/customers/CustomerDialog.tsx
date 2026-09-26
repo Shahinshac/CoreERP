@@ -95,7 +95,7 @@ export const CustomerDialog: React.FC<CustomerDialogProps> = ({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} contentClassName="max-w-xl max-h-[90vh] overflow-y-auto">
       <form onSubmit={handleSubmit} className="space-y-4">
         <DialogHeader>
           <DialogTitle className="text-[#F5F5F7]">{customer ? "Edit Customer Profile" : "Register New Customer"}</DialogTitle>

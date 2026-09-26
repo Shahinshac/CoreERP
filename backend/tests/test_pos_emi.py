@@ -173,6 +173,21 @@ def test_emi_checkout_success_no_cost_emi(client: TestClient, db_session: Sessio
     assert invoice.payment_status == "unpaid"
     assert invoice.customer_id == cust.id
 
+    # Verify Invoice GET API returns emi_plan and payment_method
+    detail_res = client.get(f"/api/invoicing/{invoice.id}", headers=headers)
+    assert detail_res.status_code == 200
+    detail_data = detail_res.json()
+    assert detail_data["payment_method"] == "emi"
+    assert detail_data["emi_plan"] is not None
+    assert detail_data["emi_plan"]["number_of_installments"] == 6
+    assert len(detail_data["emi_plan"]["installments"]) == 6
+
+    # Verify Invoice PDF generation with EMI details
+    pdf_res = client.get(f"/api/invoicing/{invoice.id}/pdf", headers=headers)
+    assert pdf_res.status_code == 200
+    assert pdf_res.headers["content-type"] == "application/pdf"
+    assert len(pdf_res.content) > 1000
+
 
 def test_emi_checkout_with_down_payment(client: TestClient, db_session: Session):
     cashier, headers = create_test_staff(db_session)

@@ -244,6 +244,8 @@ def get_customer_invoices(
         .options(
             selectinload(Invoice.items),
             selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
         )
         .order_by(Invoice.invoice_date.desc(), Invoice.created_at.desc())
         .all()
@@ -267,6 +269,8 @@ def get_customer_invoice_detail(
         .options(
             selectinload(Invoice.items),
             selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
         )
         .filter(Invoice.id == id)
         .first()
@@ -302,6 +306,8 @@ def get_customer_invoice_pdf(
         .options(
             selectinload(Invoice.items),
             selectinload(Invoice.credit_notes).selectinload(CreditNote.items),
+            selectinload(Invoice.emi_plan).selectinload(EmiPlan.installments),
+            selectinload(Invoice.sale),
         )
         .filter(Invoice.id == id)
         .first()

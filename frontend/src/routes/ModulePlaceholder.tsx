@@ -16,11 +16,11 @@ export const ModulePlaceholder: React.FC<ModulePlaceholderProps> = ({
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">{name}</h1>
-        <p className="text-sm text-slate-500">{description}</p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{name}</h1>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
-      <div className="bg-white border rounded-xl p-12 shadow-sm">
+      <div className="bg-card border border-border rounded-xl p-12 shadow-sm">
         <EmptyState
           icon={icon}
           title={`${name} Module Placeholder`}

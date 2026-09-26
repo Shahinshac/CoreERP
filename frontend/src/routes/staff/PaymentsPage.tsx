@@ -100,14 +100,14 @@ export const PaymentsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Payments Ledger
             </h1>
             <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200">
               Append-Only Ledger
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Immutable settlement receipts, cash registers, and UPI / Card transaction logs.
           </p>
         </div>
@@ -272,7 +272,7 @@ export const PaymentsPage: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={handleResetFilters}
-              className="h-9 px-2 text-xs text-slate-500 hover:text-slate-900"
+              className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
               title="Reset Filters"
             >
               Reset

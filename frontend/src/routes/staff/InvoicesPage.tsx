@@ -150,8 +150,8 @@ export const InvoicesPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Billing & Quotations</h1>
-          <p className="text-sm text-slate-500">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Billing & Quotations</h1>
+          <p className="text-sm text-muted-foreground">
             GST tax invoices with gapless numbering and sales quotations with instant conversion to invoice.
           </p>
         </div>

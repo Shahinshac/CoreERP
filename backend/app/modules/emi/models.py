@@ -63,7 +63,7 @@ class EmiPlan(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     # Relationships
     customer = relationship("app.modules.auth.models.Customer")
-    invoice = relationship("app.modules.invoicing.models.Invoice")
+    invoice = relationship("app.modules.invoicing.models.Invoice", back_populates="emi_plan")
     staff = relationship("app.modules.auth.models.StaffUser")
     installments: Mapped[list["EmiInstallment"]] = relationship(
         "EmiInstallment",

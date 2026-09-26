@@ -86,14 +86,14 @@ export const EmiPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">
               Installment (EMI) Financing
             </h1>
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300">
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400">
               POS Retail Credit
             </Badge>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Consumer financing schedules, remainder-adjusted repayments, and 90-day NPA tracking.
           </p>
         </div>
@@ -106,7 +106,7 @@ export const EmiPage: React.FC = () => {
               loadPlans()
               loadOverdue()
             }}
-            className="h-9 gap-1.5 text-slate-600"
+            className="h-9 gap-1.5"
           >
             <RefreshCw className={`h-4 w-4 ${loading || loadingOverdue ? "animate-spin" : ""}`} />
             Refresh

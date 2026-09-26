@@ -82,23 +82,23 @@ export const EmiDetailPage: React.FC = () => {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 font-mono">
+              <h1 className="text-xl font-bold tracking-tight text-foreground font-mono">
                 PLAN-{plan.id.slice(0, 8)}
               </h1>
               <Badge
                 variant="outline"
                 className={`uppercase font-bold text-[10px] ${
                   plan.status === "completed"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400"
                     : plan.status === "defaulted"
-                    ? "bg-rose-50 text-rose-700 border-rose-300"
-                    : "bg-blue-50 text-blue-700 border-blue-300"
+                    ? "bg-rose-50 text-rose-700 border-rose-300 dark:bg-rose-950/40 dark:text-rose-400"
+                    : "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-400"
                 }`}
               >
                 {plan.status}
               </Badge>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted-foreground">
               Created on {new Date(plan.created_at).toLocaleDateString()} • {plan.number_of_installments}-Month Schedule
             </p>
           </div>
@@ -324,7 +324,7 @@ export const EmiDetailPage: React.FC = () => {
               <tbody className="divide-y divide-slate-100">
                 {plan.payments.map((p) => (
                   <tr key={p.id}>
-                    <td className="py-2 px-3 font-semibold text-slate-800">{p.id.slice(0, 8)}...</td>
+                    <td className="py-2 px-3 font-semibold text-foreground">{p.id.slice(0, 8)}...</td>
                     <td className="py-2 px-3 uppercase font-sans">{p.method}</td>
                     <td className="py-2 px-3 text-slate-600">{p.reference_id || "Direct / Cash"}</td>
                     <td className="py-2 px-3 font-sans text-slate-500">{new Date(p.created_at).toLocaleString()}</td>

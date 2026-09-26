@@ -176,7 +176,9 @@ export const A4Invoice: React.FC<A4InvoiceProps> = ({
     : items.reduce((acc, curr) => acc + curr.total, 0)
 
   const amountInWords = numberToIndianWords(grandTotal)
-  const paymentMethod = sale?.payment_method ? sale.payment_method.toUpperCase() : "PAID"
+  const paymentMethod = (invoice?.payment_method || sale?.payment_method || "CASH").toUpperCase()
+  const paymentStatus = (invoice?.payment_status || (sale?.status === "completed" ? "PAID" : "UNPAID")).toUpperCase()
+  const emiPlan = invoice?.emi_plan
 
   return (
     <div className="a4-document bg-white text-slate-900 font-sans p-6 sm:p-8 max-w-[794px] mx-auto rounded-lg shadow-xl border border-slate-200 print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none print:w-full">
@@ -273,8 +275,14 @@ export const A4Invoice: React.FC<A4InvoiceProps> = ({
           </div>
           <div className="flex justify-between">
             <span className="text-slate-600">Payment Status:</span>
-            <span className="font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.2 rounded text-[11px]">
-              PAID ({paymentMethod})
+            <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+              paymentStatus === "PAID"
+                ? "text-emerald-700 bg-emerald-100/80"
+                : paymentStatus === "PARTIAL" || paymentStatus === "PARTIALLY_PAID"
+                ? "text-amber-800 bg-amber-100"
+                : "text-red-700 bg-red-100/80"
+            }`}>
+              {paymentStatus} ({paymentMethod})
             </span>
           </div>
           <div className="flex justify-between">
@@ -344,6 +352,76 @@ export const A4Invoice: React.FC<A4InvoiceProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* EMI Financing & Repayment Schedule */}
+      {emiPlan && (
+        <div className="border border-sky-300 bg-sky-50/70 rounded-md p-3.5 mb-4 text-xs">
+          <div className="font-bold text-sky-950 uppercase tracking-wider text-[11px] border-b border-sky-200 pb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>EMI Financing & Repayment Terms</span>
+            </span>
+            <span className="font-mono text-sky-800 font-semibold">
+              Tenure: {emiPlan.number_of_installments} Months • Status: {emiPlan.status.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 pb-2 text-slate-700">
+            <div>
+              <span className="text-slate-500 text-[10px] uppercase font-medium">Principal:</span>
+              <div className="font-mono font-bold text-slate-900 text-sm">₹{parseFloat(emiPlan.principal).toFixed(2)}</div>
+            </div>
+            <div>
+              <span className="text-slate-500 text-[10px] uppercase font-medium">Down Payment:</span>
+              <div className="font-mono font-bold text-emerald-700 text-sm">₹{parseFloat(emiPlan.down_payment).toFixed(2)}</div>
+            </div>
+            <div>
+              <span className="text-slate-500 text-[10px] uppercase font-medium">Total Financed:</span>
+              <div className="font-mono font-bold text-slate-900 text-sm">₹{parseFloat(emiPlan.total_financed).toFixed(2)}</div>
+            </div>
+            <div>
+              <span className="text-slate-500 text-[10px] uppercase font-medium">Monthly Installment:</span>
+              <div className="font-mono font-bold text-sky-900 text-sm">₹{parseFloat(emiPlan.installment_amount).toFixed(2)}/mo</div>
+            </div>
+          </div>
+
+          {emiPlan.installments && emiPlan.installments.length > 0 && (
+            <div className="mt-1 border border-sky-200 rounded overflow-hidden">
+              <table className="w-full text-left text-[11px]">
+                <thead className="bg-sky-100 text-sky-900 font-semibold">
+                  <tr>
+                    <th className="py-1 px-2 text-center w-8">#</th>
+                    <th className="py-1 px-2">Due Date</th>
+                    <th className="py-1 px-2 text-right">Amount Due</th>
+                    <th className="py-1 px-2 text-right">Amount Paid</th>
+                    <th className="py-1 px-2 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-sky-100 bg-white">
+                  {emiPlan.installments.map((inst) => (
+                    <tr key={inst.installment_number} className="hover:bg-sky-50/50">
+                      <td className="py-1 px-2 text-center font-mono font-medium">{inst.installment_number}</td>
+                      <td className="py-1 px-2 font-mono">{inst.due_date}</td>
+                      <td className="py-1 px-2 text-right font-mono font-medium">₹{parseFloat(inst.amount_due).toFixed(2)}</td>
+                      <td className="py-1 px-2 text-right font-mono text-emerald-700 font-medium">₹{parseFloat(inst.amount_paid).toFixed(2)}</td>
+                      <td className="py-1 px-2 text-center">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          inst.status === "paid"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : inst.status === "overdue"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-amber-100 text-amber-800"
+                        }`}>
+                          {inst.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 4. Summary & Amount in Words Block */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 mb-4">

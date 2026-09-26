@@ -472,9 +472,73 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-background pb-20 md:pb-6">
           {children}
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="md:hidden flex items-center justify-around h-14 border-t border-white/[0.14] bg-[#0C0C0E]/95 backdrop-blur-md px-2 z-20 shrink-0">
+          <Link
+            to="/staff"
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
+              location.pathname === "/staff"
+                ? "text-primary font-bold"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            <LayoutDashboard className="h-4 w-4 mb-0.5" />
+            <span>Home</span>
+          </Link>
+
+          <Link
+            to="/staff/sales"
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
+              location.pathname.startsWith("/staff/sales")
+                ? "text-primary font-bold"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            <ShoppingBag className="h-4 w-4 mb-0.5" />
+            <span>POS</span>
+          </Link>
+
+          <Link
+            to="/staff/products"
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
+              location.pathname.startsWith("/staff/products")
+                ? "text-primary font-bold"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            <Package className="h-4 w-4 mb-0.5" />
+            <span>Catalog</span>
+          </Link>
+
+          <Link
+            to="/staff/invoices"
+            className={cn(
+              "flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium transition-colors",
+              location.pathname.startsWith("/staff/invoices")
+                ? "text-primary font-bold"
+                : "text-zinc-400 hover:text-zinc-200"
+            )}
+          >
+            <FileText className="h-4 w-4 mb-0.5" />
+            <span>Billing</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="flex flex-col items-center justify-center flex-1 py-1 text-[10px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <Menu className="h-4 w-4 mb-0.5" />
+            <span>More</span>
+          </button>
+        </nav>
       </div>
 
       {/* Command Palette */}
