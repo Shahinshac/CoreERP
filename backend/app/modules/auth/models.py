@@ -115,6 +115,12 @@ class Customer(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         String(100),
         nullable=True,
     )
+    is_portal_activated: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
 
 
 class CustomerPasswordReset(Base, UUIDPrimaryKeyMixin, TimestampMixin):

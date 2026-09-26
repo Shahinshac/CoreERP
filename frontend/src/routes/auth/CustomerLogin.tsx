@@ -65,7 +65,10 @@ export const CustomerLoginPage: React.FC = () => {
       const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/portal"
       navigate(from, { replace: true })
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Invalid credentials"
+      const msg =
+        (err as any)?.response?.data?.error?.message ||
+        (err as any)?.response?.data?.detail ||
+        (err instanceof Error ? err.message : "Invalid credentials")
       setError(msg)
     } finally {
       setLoading(false)
@@ -138,9 +141,21 @@ export const CustomerLoginPage: React.FC = () => {
         </div>
 
         {error && (
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-start gap-2.5">
+            <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+            <div className="space-y-1.5 flex-1">
+              <span className="leading-relaxed block">{error}</span>
+              {error.toLowerCase().includes("register") && (
+                <div className="pt-1">
+                  <Link
+                    to="/customer/register"
+                    className="inline-flex items-center gap-1 font-semibold text-primary underline text-xs"
+                  >
+                    Activate Account & Set Password &rarr;
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

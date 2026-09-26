@@ -287,6 +287,14 @@ export function ProductsPage() {
             ) : (
               products.map((p) => {
                 const isLowStock = parseFloat(p.current_stock) <= parseFloat(p.min_stock)
+                const pPrice = parseFloat(p.purchase_price) || 0
+                const sPrice = parseFloat(p.selling_price) || 0
+                const gRate = parseFloat(p.gst_rate) || 0
+                const taxableBase = gRate > 0 ? sPrice / (1 + gRate / 100) : sPrice
+                const gstAmt = Math.max(0, sPrice - taxableBase)
+                const profit = taxableBase - pPrice
+                const marginPct = taxableBase > 0 ? (profit / taxableBase) * 100 : 0
+
                 return (
                   <TableRow key={p.id} className="hover:bg-white/[0.04] transition-colors">
                     <TableCell>
@@ -334,14 +342,27 @@ export function ProductsPage() {
                     </TableCell>
 
                     <TableCell className="text-right font-mono text-zinc-300">
-                      ₹{parseFloat(p.purchase_price).toFixed(2)}
+                      ₹{pPrice.toFixed(2)}
                     </TableCell>
 
-                    <TableCell className="text-right font-mono font-semibold text-zinc-100">
-                      ₹{parseFloat(p.selling_price).toFixed(2)}
-                      <span className="block text-[10px] text-zinc-400 font-normal">
-                        GST: {p.gst_rate}%
-                      </span>
+                    <TableCell className="text-right font-mono">
+                      <div className="font-semibold text-zinc-100">
+                        ₹{sPrice.toFixed(2)}
+                      </div>
+                      <div className="text-[10px] text-zinc-400">
+                        Base: ₹{taxableBase.toFixed(2)} • GST: ₹{gstAmt.toFixed(2)} ({gRate}%)
+                      </div>
+                      <div className="mt-1">
+                        <span
+                          className={`inline-block text-[10px] font-medium px-1.5 py-0.5 rounded border ${
+                            profit >= 0
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          }`}
+                        >
+                          Profit: {profit >= 0 ? "+" : ""}₹{profit.toFixed(2)} ({marginPct.toFixed(0)}%)
+                        </span>
+                      </div>
                     </TableCell>
 
                     <TableCell className="text-center">

@@ -534,6 +534,13 @@ def staff_reset_password(payload: ResetPasswordRequest, db: Session = Depends(ge
 # CUSTOMER AUTHENTICATION ROUTES
 # ==========================================
 
+def _normalize_phone_digits(phone: str | None) -> str:
+    if not phone:
+        return ""
+    digits = "".join(filter(str.isdigit, phone))
+    return digits[-10:] if len(digits) >= 10 else digits
+
+
 @customer_auth_router.post("/register", response_model=CustomerTokenResponse, status_code=status.HTTP_201_CREATED)
 def customer_register(
     payload: CustomerRegisterRequest,
@@ -541,37 +548,80 @@ def customer_register(
     request: Request = None,
     db: Session = Depends(get_db),
 ):
-    existing = db.query(Customer).filter(Customer.email == payload.email).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email already exists.",
-        )
-
-    customer = Customer(
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        name=payload.name,
-        phone=payload.phone,
-    )
-    db.add(customer)
-    db.commit()
-    db.refresh(customer)
-
     ip, ua = get_request_metadata(request)
-    log_audit_event(
-        db=db,
-        event_type="auth.customer_register",
-        description=f"New customer registered: '{customer.email}'.",
-        actor_id=customer.id,
-        actor_type="customer",
-        actor_email=customer.email,
-        ip_address=ip,
-        user_agent=ua,
-        resource_type="customer",
-        resource_id=str(customer.id),
-        commit=True,
-    )
+    existing = db.query(Customer).filter(Customer.email == payload.email).first()
+
+    if existing:
+        # If the portal account was already activated with a customer password
+        if getattr(existing, "is_portal_activated", False):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this email is already registered and active. Please log in or use 'Forgot Password'.",
+            )
+
+        # Account was created in-store during a sale or by staff, and is now claiming/activating portal access!
+        if existing.phone and payload.phone:
+            norm_existing = _normalize_phone_digits(existing.phone)
+            norm_payload = _normalize_phone_digits(payload.phone)
+            if norm_existing and norm_payload and norm_existing != norm_payload:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The phone number does not match the customer record on file. Please enter the phone number provided during your in-store purchase.",
+                )
+
+        # Activate portal account with chosen password
+        existing.password_hash = hash_password(payload.password)
+        if payload.name:
+            existing.name = payload.name
+        if payload.phone:
+            existing.phone = payload.phone
+        existing.is_portal_activated = True
+        existing.is_active = True
+
+        db.commit()
+        db.refresh(existing)
+        customer = existing
+
+        log_audit_event(
+            db=db,
+            event_type="auth.customer_activated",
+            description=f"In-store customer '{customer.email}' successfully activated self-service portal account.",
+            actor_id=customer.id,
+            actor_type="customer",
+            actor_email=customer.email,
+            ip_address=ip,
+            user_agent=ua,
+            resource_type="customer",
+            resource_id=str(customer.id),
+            commit=True,
+        )
+    else:
+        # Brand new customer self-registering
+        customer = Customer(
+            email=payload.email,
+            password_hash=hash_password(payload.password),
+            name=payload.name,
+            phone=payload.phone,
+            is_portal_activated=True,
+            is_active=True,
+        )
+        db.add(customer)
+        db.commit()
+        db.refresh(customer)
+
+        log_audit_event(
+            db=db,
+            event_type="auth.customer_register",
+            description=f"New customer registered: '{customer.email}'.",
+            actor_id=customer.id,
+            actor_type="customer",
+            actor_email=customer.email,
+            ip_address=ip,
+            user_agent=ua,
+            resource_type="customer",
+            resource_id=str(customer.id),
+            commit=True,
+        )
 
     access_token = create_access_token(subject=str(customer.id), audience="customer")
     refresh_token = create_refresh_token(subject=str(customer.id), audience="customer")
@@ -606,6 +656,11 @@ def customer_login(
             resource_type="customer",
             commit=True,
         )
+        if customer and not getattr(customer, "is_portal_activated", False):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Your account was registered in-store during a purchase, but portal access has not been activated yet. Please click 'Register' to set your password and activate your account.",
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
@@ -821,6 +876,7 @@ def customer_reset_password(
 
     # Update customer password
     customer.password_hash = hash_password(payload.new_password)
+    customer.is_portal_activated = True
 
     log_audit_event(
         db=db,

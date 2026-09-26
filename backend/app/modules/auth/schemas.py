@@ -56,6 +56,7 @@ class CustomerResponse(BaseModel):
     name: str
     phone: str | None = None
     is_active: bool
+    is_portal_activated: bool = False
     created_at: datetime
 
 

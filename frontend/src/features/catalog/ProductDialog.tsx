@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { NumericInput } from "@/components/ui/numeric-input"
+import { Badge } from "@/components/ui/badge"
+import { Calculator } from "lucide-react"
 import { catalogApi, Product } from "./api"
 
 interface ProductDialogProps {
@@ -137,6 +139,20 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
     }
   }
 
+  const pPrice = parseFloat(purchasePrice) || 0
+  const sPrice = parseFloat(sellingPrice) || 0
+  const gRate = parseFloat(gstRate) || 0
+
+  // Selling Price is GST-Inclusive Retail MRP
+  const taxableBase = gRate > 0 ? sPrice / (1 + gRate / 100) : sPrice
+  const gstAmount = Math.max(0, sPrice - taxableBase)
+  const halfGst = gstAmount / 2
+
+  // Gross profit is taxable base minus purchase cost
+  const netProfit = taxableBase - pPrice
+  const profitMargin = taxableBase > 0 ? (netProfit / taxableBase) * 100 : 0
+  const markupPct = pPrice > 0 ? (netProfit / pPrice) * 100 : 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -225,7 +241,11 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Purchase Price (₹) *</label>
+            <div className="flex items-center justify-between">
+              <label className="font-medium text-slate-700 dark:text-zinc-200">
+                Purchase Cost (₹) *
+              </label>
+            </div>
             <NumericInput
               value={purchasePrice}
               onChange={setPurchasePrice}
@@ -234,10 +254,18 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               placeholder="0.00"
               required
             />
+            <p className="text-[11px] text-muted-foreground">Supplier acquisition price</p>
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Selling Price (₹) *</label>
+            <div className="flex items-center justify-between">
+              <label className="font-medium text-slate-700 dark:text-zinc-200">
+                Selling Price (₹) *
+              </label>
+              <span className="text-[10px] text-emerald-400 font-mono font-medium">
+                (Includes GST)
+              </span>
+            </div>
             <NumericInput
               value={sellingPrice}
               onChange={setSellingPrice}
@@ -246,10 +274,11 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               placeholder="0.00"
               required
             />
+            <p className="text-[11px] text-muted-foreground">Retail MRP charged at POS</p>
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">GST Rate (%)</label>
+            <label className="font-medium text-slate-700 dark:text-zinc-200">GST Rate (%)</label>
             <NumericInput
               value={gstRate}
               onChange={setGstRate}
@@ -257,10 +286,11 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               suffix="%"
               placeholder="18.00"
             />
+            <p className="text-[11px] text-muted-foreground">Statutory GST slab</p>
           </div>
 
           <div className="space-y-1">
-            <label className="font-medium text-slate-700">Unit of Measurement</label>
+            <label className="font-medium text-slate-700 dark:text-zinc-200">Unit of Measurement</label>
             <Select value={unit} onChange={(e) => setUnit(e.target.value)}>
               <option value="pcs">Pieces (pcs)</option>
               <option value="box">Box (box)</option>
@@ -268,7 +298,110 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               <option value="m">Meter (m)</option>
               <option value="set">Set (set)</option>
             </Select>
+            <p className="text-[11px] text-muted-foreground">Stock inventory unit</p>
           </div>
+
+          {/* Real-time Detailed Pricing, GST & Profit Breakdown */}
+          {(sPrice > 0 || pPrice > 0) && (
+            <div className="col-span-2 rounded-xl border border-white/[0.14] bg-[#141418] p-3.5 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-semibold text-zinc-100">
+                    Pricing, GST & Profit Breakdown
+                  </span>
+                </div>
+                {pPrice > 0 && sPrice > 0 && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      netProfit > 0
+                        ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px]"
+                        : netProfit === 0
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]"
+                        : "bg-rose-500/15 text-rose-400 border-rose-500/30 text-[10px]"
+                    }
+                  >
+                    {netProfit > 0
+                      ? `Profitable (+${profitMargin.toFixed(1)}% margin)`
+                      : netProfit === 0
+                      ? "Breakeven (0% margin)"
+                      : `Selling at Loss (${profitMargin.toFixed(1)}% margin)`}
+                  </Badge>
+                )}
+              </div>
+
+              {/* 4 Cards Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
+                  <div className="text-[10px] text-zinc-400 font-medium">Selling Price (MRP)</div>
+                  <div className="text-sm font-bold text-zinc-100 font-mono mt-0.5">
+                    ₹{sPrice.toFixed(2)}
+                  </div>
+                  <div className="text-[9px] text-emerald-400 font-mono">Includes {gRate}% GST</div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
+                  <div className="text-[10px] text-zinc-400 font-medium">Taxable Base Price</div>
+                  <div className="text-sm font-bold text-zinc-200 font-mono mt-0.5">
+                    ₹{taxableBase.toFixed(2)}
+                  </div>
+                  <div className="text-[9px] text-zinc-400">Excluding GST</div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
+                  <div className="text-[10px] text-zinc-400 font-medium">GST Component ({gRate}%)</div>
+                  <div className="text-sm font-bold text-amber-400 font-mono mt-0.5">
+                    ₹{gstAmount.toFixed(2)}
+                  </div>
+                  <div className="text-[9px] text-zinc-400 font-mono">
+                    C: ₹{halfGst.toFixed(2)} | S: ₹{halfGst.toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
+                  <div className="text-[10px] text-zinc-400 font-medium">Net Profit / Unit</div>
+                  <div
+                    className={`text-sm font-bold font-mono mt-0.5 ${
+                      netProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {netProfit >= 0 ? "+" : ""}₹{netProfit.toFixed(2)}
+                  </div>
+                  <div className="text-[9px] text-zinc-400 font-mono">
+                    {pPrice > 0 ? `${markupPct.toFixed(1)}% markup on cost` : "Awaiting cost"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Equation */}
+              {pPrice > 0 && sPrice > 0 && (
+                <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-zinc-300 flex flex-wrap items-center justify-between gap-1.5 font-mono">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-zinc-400">Cost:</span>
+                    <span className="font-semibold text-zinc-200">₹{pPrice.toFixed(2)}</span>
+                    <span className="text-zinc-500">+</span>
+                    <span className="text-zinc-400">Net Profit:</span>
+                    <span
+                      className={`font-semibold ${
+                        netProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      ₹{netProfit.toFixed(2)}
+                    </span>
+                    <span className="text-zinc-500">+</span>
+                    <span className="text-zinc-400">GST ({gRate}%):</span>
+                    <span className="font-semibold text-amber-400">₹{gstAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 font-semibold text-zinc-100">
+                    <span className="text-zinc-500">=</span>
+                    <span className="text-primary font-bold">₹{sPrice.toFixed(2)}</span>
+                    <span className="text-[10px] text-zinc-400 font-normal">(POS Price)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="col-span-2 space-y-1">
             <label className="font-medium text-slate-700">Minimum Stock Alert Threshold</label>

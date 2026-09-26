@@ -67,6 +67,7 @@ class CustomerDetailResponse(BaseModel):
     gstin: str | None = None
     state: str | None = None
     is_active: bool
+    is_portal_activated: bool = False
     created_at: datetime
     updated_at: datetime
     purchases: list[CustomerPurchaseSummary] = []
@@ -83,6 +84,7 @@ class CustomerListItem(BaseModel):
     gstin: str | None = None
     state: str | None = None
     is_active: bool
+    is_portal_activated: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -148,6 +150,7 @@ def get_customer(
         phone=customer.phone,
         address=customer.address,
         is_active=customer.is_active,
+        is_portal_activated=customer.is_portal_activated,
         created_at=customer.created_at,
         updated_at=customer.updated_at,
         purchases=purchase_history,
@@ -168,6 +171,7 @@ def create_customer(
         )
 
     raw_password = payload.password or secrets.token_urlsafe(12)
+    has_explicit_password = bool(payload.password)
     customer = Customer(
         email=payload.email,
         name=payload.name,
@@ -176,6 +180,7 @@ def create_customer(
         gstin=payload.gstin,
         state=payload.state,
         password_hash=hash_password(raw_password),
+        is_portal_activated=has_explicit_password,
         is_active=True,
     )
     db.add(customer)
@@ -202,6 +207,7 @@ def create_customer(
         gstin=customer.gstin,
         state=customer.state,
         is_active=customer.is_active,
+        is_portal_activated=customer.is_portal_activated,
         created_at=customer.created_at,
         updated_at=customer.updated_at,
         purchases=[],
@@ -368,6 +374,7 @@ async def confirm_customer_import(
                 gstin=d["gstin"],
                 state=d["state"],
                 password_hash=hash_password(pwd),
+                is_portal_activated=bool(d.get("password")),
                 is_active=True,
             )
             db.add(customer)
