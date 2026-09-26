@@ -120,6 +120,10 @@ def test_pos_return_creates_credit_note_and_financial_cascade(
     assert Decimal(pre_sales_rep["summary"]["net_revenue"]) == Decimal(pre_sales_rep["summary"]["total_revenue"])
 
     # Pre-return: Verify dashboard today
+    from app.modules.reports.dashboard_routes import _CACHE
+    _CACHE["expires_at"] = 0.0
+    _CACHE["data"] = None
+
     r_dash = client.get("/api/dashboard/today", headers=headers)
     assert r_dash.status_code == 200
     assert Decimal(r_dash.json()["total_sales"]) >= Decimal("2000.00")
@@ -210,7 +214,6 @@ def test_pos_return_creates_credit_note_and_financial_cascade(
 
     # 8. Dashboard Today Cascade Verification
     # Clear cache to get fresh live computation
-    from app.modules.reports.dashboard_routes import _CACHE
     _CACHE["expires_at"] = 0.0
     _CACHE["data"] = None
 
