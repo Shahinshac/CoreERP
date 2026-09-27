@@ -212,7 +212,7 @@ def list_invoices(
                     generate_invoice_for_sale(
                         db=db,
                         sale_id=s.id,
-                        staff_id=s.cashier_id or current_staff.id,
+                        staff_id=s.staff_id or current_staff.id,
                         staff_email=current_staff.email,
                         auto_commit=False,
                     )

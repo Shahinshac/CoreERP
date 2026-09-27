@@ -7,7 +7,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 import httpx
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
@@ -121,14 +121,23 @@ def get_customer_dashboard(
     # 3. Outstanding invoice balances
     invoices = (
         filter_customer_scope(db.query(Invoice), Invoice, customer)
+        .options(selectinload(Invoice.sale))
         .filter(Invoice.is_cancelled == False)
         .all()
     )
     unpaid_invoice_total = Decimal("0.00")
     for inv in invoices:
+        sale_inv_num = inv.sale.invoice_number if inv.sale else None
+        payment_filter = Payment.invoice_id == inv.id
+        if sale_inv_num:
+            payment_filter = or_(
+                Payment.invoice_id == inv.id,
+                Payment.reference_id == sale_inv_num,
+            )
+
         paid_for_inv = (
             db.query(func.coalesce(func.sum(Payment.amount), Decimal("0.00")))
-            .filter(Payment.invoice_id == inv.id, Payment.status == "paid")
+            .filter(payment_filter, Payment.status == "paid")
             .scalar()
             or Decimal("0.00")
         )
