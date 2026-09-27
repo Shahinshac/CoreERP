@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -63,7 +64,7 @@ class BrandResponse(BrandBase):
 
 class ProductBase(BaseModel):
     name: str
-    sku: str
+    sku: str | None = None
     barcode: str | None = None
     hsn_code: str | None = None
     category_id: uuid.UUID
@@ -74,6 +75,34 @@ class ProductBase(BaseModel):
     gst_rate: Decimal = Decimal("0.00")
     min_stock: Decimal = Decimal("0.000")
     is_pinned: bool = False
+
+    @field_validator("sku", mode="before")
+    @classmethod
+    def validate_sku(cls, v):
+        if v is None:
+            return None
+        val = str(v).strip()
+        return val if val else None
+
+    @field_validator("barcode", mode="before")
+    @classmethod
+    def validate_barcode(cls, v):
+        if v is None:
+            return None
+        val = str(v).strip()
+        return val if val else None
+
+    @field_validator("hsn_code", mode="before")
+    @classmethod
+    def validate_hsn_code(cls, v):
+        if v is None:
+            return None
+        val = str(v).strip()
+        if not val:
+            return None
+        if not re.match(r"^\d{2,8}$", val):
+            raise ValueError("HSN/SAC code must be between 2 and 8 numeric digits (e.g. 8471, 8517, 998311).")
+        return val
 
     @field_validator("purchase_price", mode="before")
     @classmethod
@@ -115,6 +144,34 @@ class ProductUpdate(BaseModel):
     is_active: bool | None = None
     is_pinned: bool | None = None
 
+    @field_validator("sku", mode="before")
+    @classmethod
+    def validate_sku(cls, v):
+        if v is None:
+            return None
+        val = str(v).strip()
+        return val if val else None
+
+    @field_validator("barcode", mode="before")
+    @classmethod
+    def validate_barcode(cls, v):
+        if v is None:
+            return None
+        val = str(v).strip()
+        return val if val else None
+
+    @field_validator("hsn_code", mode="before")
+    @classmethod
+    def validate_hsn_code(cls, v):
+        if v is None:
+            return None
+        val = str(v).strip()
+        if not val:
+            return None
+        if not re.match(r"^\d{2,8}$", val):
+            raise ValueError("HSN/SAC code must be between 2 and 8 numeric digits (e.g. 8471, 8517, 998311).")
+        return val
+
     @field_validator("purchase_price", mode="before")
     @classmethod
     def validate_purchase_price(cls, v):
@@ -142,6 +199,13 @@ class ProductUpdate(BaseModel):
         if v is None:
             return v
         return validate_quantity_decimal(v, allow_negative=False, field_name="Minimum stock")
+
+
+class BackfillIdentifiersResponse(BaseModel):
+    total_products_checked: int
+    sku_backfilled_count: int
+    barcode_backfilled_count: int
+    message: str
 
 
 class ProductPinUpdate(BaseModel):

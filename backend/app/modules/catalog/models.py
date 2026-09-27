@@ -1,10 +1,17 @@
 import uuid
 from decimal import Decimal
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Numeric, String, Text, Uuid
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 from app.core.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
+
+
+class ProductSequence(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "product_sequences"
+
+    sequence_name: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
+    last_number: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
 class Category(Base, UUIDPrimaryKeyMixin, TimestampMixin):

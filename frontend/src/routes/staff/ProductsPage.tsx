@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   AlertTriangle,
+  Barcode as BarcodeIcon,
   Boxes,
   Camera,
   Edit,
@@ -28,6 +30,7 @@ import {
 } from "@/components/ui/table"
 import { catalogApi, Product } from "@/features/catalog/api"
 import { ProductDialog } from "@/features/catalog/ProductDialog"
+import { ProductCodesModal } from "@/features/catalog/ProductCodesModal"
 import { ProductImageUpload } from "@/features/catalog/ProductImageUpload"
 import { CategoryBrandModal } from "@/features/catalog/CategoryBrandModal"
 import { CsvImportModal } from "@/components/common/CsvImportModal"
@@ -54,6 +57,9 @@ export function ProductsPage() {
   // Dialog states
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [productCodesModalOpen, setProductCodesModalOpen] = useState(false)
+  const [productForCodes, setProductForCodes] = useState<Product | null>(null)
+  const [isBackfilling, setIsBackfilling] = useState(false)
   const [importModalOpen, setImportModalOpen] = useState(false)
   const [catBrandModalOpen, setCatBrandModalOpen] = useState(false)
   const [catBrandDefaultTab, setCatBrandDefaultTab] = useState<"categories" | "brands">("categories")
@@ -122,6 +128,19 @@ export function ProductsPage() {
     setImageUploadOpen(true)
   }
 
+  const handleBackfillIdentifiers = async () => {
+    try {
+      setIsBackfilling(true)
+      const res = await catalogApi.backfillIdentifiers()
+      toast.success(res.message)
+      refetch()
+    } catch {
+      // Error handled by apiClient
+    } finally {
+      setIsBackfilling(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -134,6 +153,16 @@ export function ProductsPage() {
         </div>
         {canEdit && (
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleBackfillIdentifiers}
+              disabled={isBackfilling}
+              className="flex items-center gap-2 border-white/[0.14] text-zinc-300 hover:text-white"
+              title="Automatically generate missing SKU and EAN-13 barcodes for existing products"
+            >
+              <RefreshCw className={`h-4 w-4 text-cyan-400 ${isBackfilling ? "animate-spin" : ""}`} />
+              {isBackfilling ? "Backfilling..." : "Backfill Codes"}
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -472,6 +501,18 @@ export function ProductsPage() {
                             <Button
                               size="icon"
                               variant="ghost"
+                              onClick={() => {
+                                setProductForCodes(p)
+                                setProductCodesModalOpen(true)
+                              }}
+                              className="h-8 w-8 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                              title="Product Codes & Labels (Barcode/QR)"
+                            >
+                              <BarcodeIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
                               onClick={() => handleEditProduct(p)}
                               className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.08]"
                               title="Edit Product"
@@ -496,6 +537,12 @@ export function ProductsPage() {
         onOpenChange={setProductDialogOpen}
         product={selectedProduct}
         onSuccess={() => refetch()}
+      />
+
+      <ProductCodesModal
+        open={productCodesModalOpen}
+        onOpenChange={setProductCodesModalOpen}
+        product={productForCodes}
       />
 
       <ProductImageUpload

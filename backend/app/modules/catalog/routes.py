@@ -17,6 +17,7 @@ from app.modules.auth.dependencies import get_current_staff, require_roles
 from app.modules.auth.models import StaffRole, StaffUser
 from app.modules.catalog.models import Brand, Category, Product
 from app.modules.catalog.schemas import (
+    BackfillIdentifiersResponse,
     BrandCreate,
     BrandResponse,
     BrandUpdate,
@@ -30,6 +31,11 @@ from app.modules.catalog.schemas import (
     ProductResponse,
     ProductUpdate,
     RowImportResult,
+)
+from app.modules.catalog.sequences import (
+    backfill_missing_product_identifiers,
+    get_next_product_barcode,
+    get_next_product_sku,
 )
 
 logger = logging.getLogger("app.catalog")
@@ -259,20 +265,29 @@ def create_product(
     db: Session = Depends(get_db),
     current_staff: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER)),
 ):
-    # Verify SKU uniqueness
-    if db.query(Product).filter(Product.sku.ilike(payload.sku)).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Product with SKU '{payload.sku}' already exists.",
-        )
-
-    # Verify Barcode uniqueness if supplied
-    if payload.barcode:
-        if db.query(Product).filter(Product.barcode == payload.barcode).first():
+    # Determine or auto-generate SKU
+    if payload.sku:
+        sku_clean = payload.sku.strip()
+        if db.query(Product).filter(Product.sku.ilike(sku_clean)).first():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Product with barcode '{payload.barcode}' already exists.",
+                detail=f"Product with SKU '{sku_clean}' already exists.",
             )
+        final_sku = sku_clean
+    else:
+        final_sku = get_next_product_sku(db)
+
+    # Determine or auto-generate Barcode
+    if payload.barcode:
+        bc_clean = payload.barcode.strip()
+        if db.query(Product).filter(Product.barcode == bc_clean).first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Product with barcode '{bc_clean}' already exists.",
+            )
+        final_barcode = bc_clean
+    else:
+        final_barcode = get_next_product_barcode(db)
 
     # Check category and brand existence
     if not db.query(Category).filter(Category.id == payload.category_id).first():
@@ -282,8 +297,8 @@ def create_product(
 
     product = Product(
         name=payload.name,
-        sku=payload.sku,
-        barcode=payload.barcode,
+        sku=final_sku,
+        barcode=final_barcode,
         hsn_code=payload.hsn_code,
         category_id=payload.category_id,
         brand_id=payload.brand_id,
@@ -300,13 +315,13 @@ def create_product(
     log_audit_event(
         db=db,
         event_type="catalog.product_created",
-        description=f"Product '{product.name}' (SKU: {product.sku}) created.",
+        description=f"Product '{product.name}' (SKU: {product.sku}, Barcode: {product.barcode}) created.",
         actor_id=current_staff.id if current_staff else None,
         actor_type="staff",
         actor_email=current_staff.email if current_staff else None,
         resource_type="product",
         resource_id=str(product.id),
-        details={"sku": product.sku, "name": product.name, "selling_price": str(product.selling_price)},
+        details={"sku": product.sku, "barcode": product.barcode, "name": product.name, "selling_price": str(product.selling_price)},
     )
     db.commit()
     db.refresh(product)
@@ -371,6 +386,30 @@ def update_product(
     db.commit()
     db.refresh(product)
     return product
+
+
+@catalog_router.post("/products/backfill-identifiers", response_model=BackfillIdentifiersResponse)
+def backfill_product_identifiers(
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(require_roles(StaffRole.ADMIN, StaffRole.MANAGER)),
+):
+    """
+    Backfills missing SKU or Barcode identifiers for existing products.
+    Preserves all existing identifiers and reports count of backfilled records.
+    """
+    result = backfill_missing_product_identifiers(db)
+    log_audit_event(
+        db=db,
+        event_type="catalog.product_identifiers_backfilled",
+        description=result["message"],
+        actor_id=current_staff.id if current_staff else None,
+        actor_type="staff",
+        actor_email=current_staff.email if current_staff else None,
+        resource_type="product_catalog",
+        resource_id="all",
+        details=result,
+    )
+    return result
 
 
 @catalog_router.patch("/products/{product_id}/pin", response_model=ProductResponse)
@@ -574,7 +613,7 @@ def _parse_and_validate_product_rows(db: Session, reader: csv.DictReader) -> lis
         if not name:
             errors.append("Product name is required.")
         if not sku:
-            errors.append("SKU is required.")
+            sku = None  # Will be auto-generated during import
         else:
             sku_lower = sku.lower()
             if sku_lower in seen_skus:
@@ -594,6 +633,11 @@ def _parse_and_validate_product_rows(db: Session, reader: csv.DictReader) -> lis
                 existing_bc = db.query(Product).filter(Product.barcode == barcode).first()
                 if existing_bc:
                     errors.append(f"Product with barcode '{barcode}' already exists.")
+
+        if hsn_code:
+            import re
+            if not re.match(r"^\d{2,8}$", hsn_code):
+                errors.append(f"Invalid HSN/SAC code '{hsn_code}'. Must be between 2 and 8 numeric digits.")
 
         cat_obj = categories_cache.get(cat_key)
         if not cat_key:
@@ -715,10 +759,12 @@ async def confirm_product_import(
     for res in results:
         if res.is_valid:
             d = res.data
+            sku_val = d["sku"].strip() if d.get("sku") else get_next_product_sku(db)
+            barcode_val = d["barcode"].strip() if d.get("barcode") else get_next_product_barcode(db)
             product = Product(
                 name=d["name"],
-                sku=d["sku"],
-                barcode=d["barcode"],
+                sku=sku_val,
+                barcode=barcode_val,
                 hsn_code=d["hsn_code"],
                 category_id=uuid.UUID(d["category_id"]),
                 brand_id=uuid.UUID(d["brand_id"]),

@@ -119,6 +119,15 @@ def lookup_pos_product_by_barcode(
     Returns 404 if not found.
     """
     code = barcode.strip()
+    if code.startswith("{") and code.endswith("}"):
+        try:
+            import json
+            parsed = json.loads(code)
+            if isinstance(parsed, dict):
+                code = str(parsed.get("barcode") or parsed.get("sku") or parsed.get("id") or code).strip()
+        except Exception:
+            pass
+
     product = (
         db.query(Product)
         .filter(
@@ -148,6 +157,7 @@ def lookup_pos_product_by_barcode(
         "name": product.name,
         "sku": product.sku,
         "barcode": product.barcode,
+        "hsn_code": product.hsn_code,
         "unit": product.unit,
         "selling_price": product.selling_price,
         "gst_rate": product.gst_rate,

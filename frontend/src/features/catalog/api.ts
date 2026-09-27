@@ -40,7 +40,7 @@ export interface Product {
 
 export interface ProductCreatePayload {
   name: string
-  sku: string
+  sku?: string
   barcode?: string | null
   hsn_code?: string | null
   category_id: string
@@ -131,6 +131,17 @@ export const catalogApi = {
     formData.append("file", file)
     return apiClient.upload<ImportConfirmResponse>("/api/catalog/products/import/confirm", formData)
   },
+
+  // Identifiers Backfill
+  backfillIdentifiers: () =>
+    apiClient.post<BackfillIdentifiersResponse>("/api/catalog/products/backfill-identifiers"),
+}
+
+export interface BackfillIdentifiersResponse {
+  total_products_checked: number
+  sku_backfilled_count: number
+  barcode_backfilled_count: number
+  message: string
 }
 
 export interface RowImportResult {

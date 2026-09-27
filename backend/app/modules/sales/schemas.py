@@ -195,6 +195,7 @@ class POSProductResponse(BaseModel):
     name: str
     sku: str
     barcode: str | None = None
+    hsn_code: str | None = None
     unit: str = "pcs"
     selling_price: Decimal
     gst_rate: Decimal
