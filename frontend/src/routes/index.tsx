@@ -39,6 +39,7 @@ const ReportsPage = React.lazy(() => import("./staff/ReportsPage"))
 const WarrantiesPage = React.lazy(() => import("./staff/WarrantiesPage"))
 const TicketsPage = React.lazy(() => import("./staff/TicketsPage"))
 const AuditLogsPage = React.lazy(() => import("./staff/AuditLogsPage"))
+const SystemAdminPage = React.lazy(() => import("./staff/SystemAdminPage"))
 
 // Customer Portal Modules
 const CustomerPurchasesPage = React.lazy(() => import("./portal/CustomerPurchasesPage"))
@@ -243,6 +244,14 @@ export const router = createBrowserRouter([
     element: (
       <StaffRouteGuard allowedRoles={["Super Admin", "Admin"]}>
         <StaffShell>{withSuspense(<AuditLogsPage />)}</StaffShell>
+      </StaffRouteGuard>
+    ),
+  },
+  {
+    path: "/staff/system-admin",
+    element: (
+      <StaffRouteGuard allowedRoles={["Super Admin", "Admin"]}>
+        <StaffShell>{withSuspense(<SystemAdminPage />)}</StaffShell>
       </StaffRouteGuard>
     ),
   },

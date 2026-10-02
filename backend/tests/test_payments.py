@@ -78,7 +78,7 @@ def test_invoice(client: TestClient, db_session, auth_staff_admin):
         json={
             "items": [{"product_id": str(product.id), "quantity": "1.000", "unit_price": "1000.00", "discount_amount": "0.00"}],
             "discount_amount": "0.00",
-            "payment_method": "cash",
+            "payment_method": "credit",
         },
     )
     sale_id = chk_res.json()["id"]

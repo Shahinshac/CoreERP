@@ -16,6 +16,7 @@ import {
   Receipt,
   RotateCcw,
   Search,
+  Settings,
   ShieldAlert,
   ShieldCheck,
   ShoppingBag,
@@ -64,6 +65,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Warranties", href: "/staff/warranties", icon: ShieldCheck, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
   { title: "Tickets", href: "/staff/tickets", icon: HelpCircle, allowedRoles: ["Super Admin", "Admin", "Manager", "Staff"] },
   { title: "Audit Logs", href: "/staff/audit-logs", icon: ShieldAlert, allowedRoles: ["Super Admin", "Admin"] },
+  { title: "System Admin", href: "/staff/system-admin", icon: Settings, allowedRoles: ["Super Admin", "Admin"] },
 ]
 
 export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -281,6 +283,16 @@ export const StaffShell: React.FC<{ children: React.ReactNode }> = ({ children }
         href: "/staff/audit-logs",
         icon: ShieldAlert,
         keywords: ["audit", "logs", "security", "trail", "compliance", "events"],
+        allowedRoles: ["Super Admin", "Admin"],
+      },
+      {
+        id: "staff-system-admin",
+        title: "System Administration",
+        description: "System configuration, business settings, and admin controls",
+        category: "HR & Administration",
+        href: "/staff/system-admin",
+        icon: Settings,
+        keywords: ["admin", "system", "config", "settings", "gst", "business"],
         allowedRoles: ["Super Admin", "Admin"],
       },
       {

@@ -20,7 +20,7 @@ from app.core.security import (
 )
 import pyotp
 from app.modules.audit.service import get_request_metadata, log_audit_event
-from app.modules.auth.dependencies import get_current_customer, get_current_staff
+from app.modules.auth.dependencies import get_current_customer, get_current_staff, require_roles
 from app.modules.auth.models import Customer, CustomerPasswordReset, StaffRole, StaffSession, StaffUser
 from app.modules.notifications.service import email_service
 
@@ -177,6 +177,7 @@ def staff_login(
     return StaffTokenResponse(
         access_token=access_token,
         user=StaffUserResponse.model_validate(staff),
+        must_change_password=bool(getattr(staff, 'must_change_password', False)),
     )
 
 
@@ -898,3 +899,345 @@ def customer_reset_password(
         message="Password has been successfully reset. You may now log in with your new password."
     )
 
+
+# ==========================================
+# ADMIN: STAFF ACCOUNT CREATION & ONBOARDING
+# ==========================================
+
+from app.modules.auth.schemas import (
+    StaffAdminDetailResponse,
+    StaffChangePasswordRequest,
+    StaffCreateRequest,
+    StaffOnboardingResult,
+)
+
+
+@staff_auth_router.post(
+    "/create",
+    response_model=StaffOnboardingResult,
+    status_code=status.HTTP_201_CREATED,
+)
+def admin_create_staff(
+    payload: StaffCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(require_roles(StaffRole.SUPER_ADMIN, StaffRole.ADMIN)),
+):
+    """
+    Admin-only: Create a new staff account.
+    - Generates a secure temporary password if not provided.
+    - Hashes credential before storage (never stored in plaintext).
+    - Sets must_change_password=True so staff is forced to change on first login.
+    - Sends a welcome email with login credentials.
+    - Returns whether email was sent; admin can resend if email failed.
+    """
+    from app.modules.auth.dependencies import require_roles
+    ip, ua = get_request_metadata(request)
+
+    # Duplicate email check
+    existing = db.query(StaffUser).filter(StaffUser.email == payload.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A staff account with email '{payload.email}' already exists.",
+        )
+
+    # Generate or use provided temporary password
+    temp_password = payload.temporary_password or secrets.token_urlsafe(12)
+
+    # Hash before storing — NEVER store plaintext
+    password_hash = hash_password(temp_password)
+
+    new_staff = StaffUser(
+        email=payload.email,
+        full_name=payload.full_name,
+        role=payload.role,
+        phone=payload.phone,
+        password_hash=password_hash,
+        must_change_password=True,
+        welcome_email_sent=False,
+    )
+    db.add(new_staff)
+    db.flush()
+
+    # Determine login URL from settings
+    try:
+        from app.core.config import settings as _s
+        base_url = getattr(_s, "FRONTEND_URL", None) or getattr(_s, "APP_URL", None) or "https://yourdomain.com"
+    except Exception:
+        base_url = "https://yourdomain.com"
+
+    login_url = f"{base_url.rstrip('/')}/staff"
+    role_label = payload.role.value if hasattr(payload.role, "value") else str(payload.role)
+
+    subject = "Your Staff Account Has Been Created"
+    body_text = f"""Hello {payload.full_name},
+
+Your staff account has been created for {base_url}.
+
+Login Email: {payload.email}
+Temporary Password: {temp_password}
+
+Please use these credentials to sign in for the first time:
+{login_url}
+
+After your first login, you MUST create a new personal password before you can access the system.
+
+IMPORTANT SECURITY INSTRUCTIONS:
+- Do not share this password with anyone.
+- Do not reuse this temporary password elsewhere.
+- Change the temporary password immediately after your first login.
+- Keep your new password private.
+- Never send your password to another person.
+- If you did not request this account, contact your administrator immediately.
+
+Your Role: {role_label}
+
+—
+This is an automated message. Please do not reply.
+"""
+    body_html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#0f0f0f;color:#e1e1e1;border-radius:8px;">
+  <h2 style="color:#a78bfa;margin-top:0;">Your Staff Account Has Been Created</h2>
+  <p>Hello <strong>{payload.full_name}</strong>,</p>
+  <p>Your staff account has been created for <a href="{base_url}" style="color:#a78bfa;">{base_url}</a>.</p>
+  <table style="background:#1a1a2e;border-radius:6px;padding:16px 20px;width:100%;margin:16px 0;border-collapse:collapse;">
+    <tr><td style="padding:4px 0;color:#9ca3af;">Login Email</td><td style="padding:4px 0;font-weight:600;">{payload.email}</td></tr>
+    <tr><td style="padding:4px 0;color:#9ca3af;">Temporary Password</td><td style="padding:4px 0;font-weight:600;font-family:monospace;color:#f59e0b;">{temp_password}</td></tr>
+    <tr><td style="padding:4px 0;color:#9ca3af;">Your Role</td><td style="padding:4px 0;">{role_label}</td></tr>
+  </table>
+  <a href="{login_url}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Sign In Now</a>
+  <p style="margin-top:24px;padding:16px;background:#1e1b2e;border-left:3px solid #ef4444;border-radius:4px;">
+    <strong>⚠ Security Notice:</strong> You will be required to change this password on your first login.
+    Do not share this password with anyone. Never send your password to another person.
+  </p>
+  <p style="color:#6b7280;font-size:12px;">This is an automated message. Please do not reply.</p>
+</div>
+"""
+
+    email_sent = email_service.send_email(
+        to_email=payload.email,
+        subject=subject,
+        body_text=body_text,
+        body_html=body_html,
+    )
+    new_staff.welcome_email_sent = email_sent
+
+    log_audit_event(
+        db=db,
+        event_type="auth.staff_created",
+        description=f"Staff account created for '{payload.email}' ({role_label}) by admin '{current_staff.email}'.",
+        actor_id=current_staff.id,
+        actor_type="staff",
+        actor_email=current_staff.email,
+        ip_address=ip,
+        user_agent=ua,
+        resource_type="staff_user",
+        resource_id=str(new_staff.id),
+        details={"role": role_label, "email_sent": email_sent},
+    )
+    if email_sent:
+        log_audit_event(
+            db=db,
+            event_type="auth.welcome_email_sent",
+            description=f"Welcome email sent to '{payload.email}'.",
+            actor_id=current_staff.id,
+            actor_type="staff",
+            actor_email=current_staff.email,
+            resource_type="staff_user",
+            resource_id=str(new_staff.id),
+        )
+    else:
+        log_audit_event(
+            db=db,
+            event_type="auth.welcome_email_failed",
+            description=f"Welcome email FAILED for '{payload.email}'. Admin should resend.",
+            actor_id=current_staff.id,
+            actor_type="staff",
+            actor_email=current_staff.email,
+            resource_type="staff_user",
+            resource_id=str(new_staff.id),
+        )
+
+    db.commit()
+
+    return StaffOnboardingResult(
+        staff_id=new_staff.id,
+        email=new_staff.email,
+        full_name=new_staff.full_name,
+        role=role_label,
+        account_created=True,
+        email_sent=email_sent,
+        message=(
+            "Staff account created and welcome email sent."
+            if email_sent
+            else "Staff account created. Welcome email could NOT be sent — please use Resend Welcome Email."
+        ),
+    )
+
+
+@staff_auth_router.post("/change-password", response_model=MessageResponse)
+def staff_change_password(
+    payload: StaffChangePasswordRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(get_current_staff),
+):
+    """
+    Staff changes their own password.
+    Required when must_change_password=True (first login with temporary credential).
+    After successful change:
+    - must_change_password is set to False.
+    - Temporary credential is no longer valid (new hash replaces it).
+    """
+    ip, ua = get_request_metadata(request)
+
+    if not verify_password(payload.current_password, current_staff.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect.",
+        )
+
+    if payload.new_password == payload.current_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password.",
+        )
+
+    current_staff.password_hash = hash_password(payload.new_password)
+    current_staff.must_change_password = False
+
+    log_audit_event(
+        db=db,
+        event_type="auth.password_changed",
+        description=f"Staff '{current_staff.email}' changed their password.",
+        actor_id=current_staff.id,
+        actor_type="staff",
+        actor_email=current_staff.email,
+        ip_address=ip,
+        user_agent=ua,
+        resource_type="staff_user",
+        resource_id=str(current_staff.id),
+        commit=True,
+    )
+    db.commit()
+
+    return MessageResponse(message="Password changed successfully. You can now access the system.")
+
+
+@staff_auth_router.post("/resend-welcome-email", response_model=StaffOnboardingResult)
+def resend_welcome_email(
+    target_staff_id: uuid.UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_staff: StaffUser = Depends(require_roles(StaffRole.SUPER_ADMIN, StaffRole.ADMIN)),
+):
+    """
+    Admin-only: Resend the onboarding email to a staff member.
+    Generates a fresh temporary password and invalidates the old one.
+    Only valid for active staff accounts.
+    """
+    from app.modules.auth.dependencies import require_roles
+    ip, ua = get_request_metadata(request)
+
+    target = db.query(StaffUser).filter(StaffUser.id == target_staff_id).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Staff account not found.")
+    if not target.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot resend welcome email to a deactivated account.",
+        )
+
+    # Generate a fresh temporary password
+    new_temp_password = secrets.token_urlsafe(12)
+    target.password_hash = hash_password(new_temp_password)
+    target.must_change_password = True
+    target.welcome_email_sent = False
+
+    try:
+        from app.core.config import settings as _s
+        base_url = getattr(_s, "FRONTEND_URL", None) or getattr(_s, "APP_URL", None) or "https://yourdomain.com"
+    except Exception:
+        base_url = "https://yourdomain.com"
+
+    login_url = f"{base_url.rstrip('/')}/staff"
+    role_label = target.role.value if hasattr(target.role, "value") else str(target.role)
+    name_label = target.full_name or target.email
+
+    subject = "Your Staff Account Credentials (Resent)"
+    body_text = f"""Hello {name_label},
+
+A new temporary password has been generated for your staff account.
+
+Login Email: {target.email}
+New Temporary Password: {new_temp_password}
+
+Please sign in at: {login_url}
+
+You will be required to change this password immediately after login.
+
+Do NOT share this password with anyone.
+"""
+    body_html = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#0f0f0f;color:#e1e1e1;border-radius:8px;">
+  <h2 style="color:#a78bfa;">Staff Account Credentials (Resent)</h2>
+  <p>Hello <strong>{name_label}</strong>,</p>
+  <p>A new temporary password has been generated for your account.</p>
+  <table style="background:#1a1a2e;border-radius:6px;padding:16px 20px;width:100%;margin:16px 0;border-collapse:collapse;">
+    <tr><td style="padding:4px 0;color:#9ca3af;">Login Email</td><td style="padding:4px 0;font-weight:600;">{target.email}</td></tr>
+    <tr><td style="padding:4px 0;color:#9ca3af;">New Temporary Password</td><td style="padding:4px 0;font-weight:600;font-family:monospace;color:#f59e0b;">{new_temp_password}</td></tr>
+  </table>
+  <a href="{login_url}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Sign In</a>
+  <p style="margin-top:24px;padding:16px;background:#1e1b2e;border-left:3px solid #ef4444;border-radius:4px;">
+    <strong>⚠ Security Notice:</strong> Do not share this password. Change it immediately on first login.
+  </p>
+</div>
+"""
+
+    email_sent = email_service.send_email(
+        to_email=target.email,
+        subject=subject,
+        body_text=body_text,
+        body_html=body_html,
+    )
+    target.welcome_email_sent = email_sent
+
+    log_audit_event(
+        db=db,
+        event_type="auth.welcome_email_resent" if email_sent else "auth.welcome_email_failed",
+        description=f"Welcome email {'resent' if email_sent else 'resend FAILED'} for '{target.email}' by '{current_staff.email}'.",
+        actor_id=current_staff.id,
+        actor_type="staff",
+        actor_email=current_staff.email,
+        ip_address=ip,
+        user_agent=ua,
+        resource_type="staff_user",
+        resource_id=str(target.id),
+        details={"email_sent": email_sent},
+        commit=True,
+    )
+    db.commit()
+
+    return StaffOnboardingResult(
+        staff_id=target.id,
+        email=target.email,
+        full_name=target.full_name,
+        role=role_label,
+        account_created=True,
+        email_sent=email_sent,
+        message=(
+            "New temporary password generated and welcome email sent."
+            if email_sent
+            else "New temporary password generated but welcome email FAILED to send. Check SMTP/Brevo configuration."
+        ),
+    )
+
+
+@staff_auth_router.get("/staff-list", response_model=list[StaffAdminDetailResponse])
+def admin_list_staff(
+    db: Session = Depends(get_db),
+    _: StaffUser = Depends(require_roles(StaffRole.SUPER_ADMIN, StaffRole.ADMIN, StaffRole.MANAGER)),
+):
+    """Admin: list all staff accounts with onboarding status."""
+    return db.query(StaffUser).order_by(StaffUser.created_at.desc()).all()

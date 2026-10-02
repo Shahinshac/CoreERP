@@ -80,7 +80,23 @@ class StaffUser(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         JSON,
         nullable=True,
     )
-
+    # ── Staff Onboarding Fields ────────────────────────────────
+    # must_change_password: True when account is created with a temporary password.
+    # Staff MUST change the password on first login before accessing the ERP.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+    # welcome_email_sent: False if the onboarding email failed or was not sent.
+    # Allows admin to resend via the management panel.
+    welcome_email_sent: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
 
 class Customer(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "customers"

@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "shaahnpvt7@gmail.com"
     EMAIL_FROM_NAME: str = "SHAHIN SHA"
 
+    # Application URL (used in emails — set to your deployed frontend URL in production)
+    FRONTEND_URL: str = ""
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:

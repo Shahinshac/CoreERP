@@ -124,6 +124,23 @@ class ProductBase(BaseModel):
     def validate_min_stock(cls, v):
         return validate_quantity_decimal(v, allow_negative=False, field_name="Minimum stock")
 
+    # Warranty policy
+    has_warranty: bool = False
+    warranty_months: int | None = None
+
+    @field_validator("warranty_months", mode="before")
+    @classmethod
+    def validate_warranty_months(cls, v):
+        if v is None:
+            return None
+        try:
+            months = int(v)
+        except (TypeError, ValueError):
+            raise ValueError("warranty_months must be a positive integer.")
+        if months <= 0:
+            raise ValueError("warranty_months must be greater than 0.")
+        return months
+
 
 class ProductCreate(ProductBase):
     pass
@@ -143,6 +160,8 @@ class ProductUpdate(BaseModel):
     min_stock: Decimal | None = None
     is_active: bool | None = None
     is_pinned: bool | None = None
+    has_warranty: bool | None = None
+    warranty_months: int | None = None
 
     @field_validator("sku", mode="before")
     @classmethod
@@ -230,6 +249,8 @@ class ProductResponse(BaseModel):
     image_public_id: str | None = None
     is_active: bool
     is_pinned: bool = False
+    has_warranty: bool = False
+    warranty_months: int | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -204,8 +204,19 @@ def generate_invoice_for_sale(
     invoice.total_tax = quantize_money(total_cgst + total_sgst + total_igst)
     invoice.grand_total = quantize_money(invoice.subtotal + invoice.total_tax)
 
-    # Reconcile EMI plan linkage if this sale was financed via EMI
+    # Reconcile payment_status from actual Payment ledger records
+    # This is the AUTHORITATIVE source — prevents the "UNPAID after paid checkout" bug.
+    from app.modules.payments.models import Payment, PaymentStatus as PStatus
+    paid_payments = db.execute(
+        select(Payment).filter(
+            Payment.reference_id == sale.invoice_number,
+            Payment.status == PStatus.PAID.value,
+        )
+    ).scalars().all()
+    total_paid_amount = sum((p.amount for p in paid_payments), Decimal("0.00"))
+
     if sale.payment_method == "emi":
+        # Reconcile EMI plan linkage
         from app.modules.emi.models import EmiPlan
         emi_plan = db.execute(
             select(EmiPlan).filter(
@@ -215,10 +226,81 @@ def generate_invoice_for_sale(
         ).scalar_one_or_none()
         if emi_plan:
             emi_plan.invoice_id = invoice.id
-            if emi_plan.down_payment > Decimal("0.00"):
-                invoice.payment_status = "partial"
-            else:
-                invoice.payment_status = "unpaid"
+        # Payment status for EMI is based on down payment vs grand_total
+        down_pay = total_paid_amount  # only down payment is a PAID record for EMI
+        if down_pay >= invoice.grand_total:
+            invoice.payment_status = "paid"
+        elif down_pay > Decimal("0.00"):
+            invoice.payment_status = "partial"
+        else:
+            invoice.payment_status = "unpaid"
+    else:
+        # For cash / card / UPI / split — compare total paid to invoice grand total
+        if total_paid_amount >= invoice.grand_total:
+            invoice.payment_status = "paid"
+        elif total_paid_amount > Decimal("0.00"):
+            invoice.payment_status = "partial"
+        else:
+            invoice.payment_status = "unpaid"
+
+    # ── Warranty Auto-Creation ─────────────────────────────────────────────────
+    # For each sale item whose product has warranty enabled and there is a
+    # registered customer (not walk-in), create an authoritative Warranty record.
+    # Uses dateutil.relativedelta for correct leap-year/month-boundary date math.
+    # Failure is logged but never blocks invoice generation.
+    # ─────────────────────────────────────────────────────────────────────────────
+    if sale.customer_id:
+        try:
+            import calendar
+            from datetime import date as dt_date
+            from app.modules.support.models import Warranty
+            purchase_date = sale_dt.date() if isinstance(sale_dt, datetime) else sale_dt
+
+            for s_item in sale.items:
+                item_product = db.execute(
+                    select(Product).filter(Product.id == s_item.product_id)
+                ).scalar_one_or_none()
+
+                if item_product and item_product.has_warranty and item_product.warranty_months:
+                    # Avoid duplicate if invoice is regenerated
+                    from sqlalchemy import exists
+                    already = db.execute(
+                        select(Warranty).filter(
+                            Warranty.sale_item_id == s_item.id,
+                        )
+                    ).scalar_one_or_none()
+                    if already:
+                        continue
+
+                    # Standard library month addition
+                    total_m = purchase_date.month - 1 + item_product.warranty_months
+                    new_year = purchase_date.year + total_m // 12
+                    new_month = total_m % 12 + 1
+                    max_day = calendar.monthrange(new_year, new_month)[1]
+                    warranty_end = dt_date(new_year, new_month, min(purchase_date.day, max_day))
+
+                    warranty = Warranty(
+                        product_id=item_product.id,
+                        customer_id=sale.customer_id,
+                        sale_item_id=s_item.id,
+                        purchase_date=purchase_date,
+                        start_date=purchase_date,
+                        end_date=warranty_end,
+                        is_claimed=False,
+                    )
+                    db.add(warranty)
+                    logger.info(
+                        f"[WARRANTY] Auto-created for product='{item_product.name}' "
+                        f"customer={sale.customer_id} "
+                        f"{purchase_date} → {warranty_end} "
+                        f"({item_product.warranty_months} months)"
+                    )
+
+        except Exception as exc:
+            logger.error(
+                f"[WARRANTY] Auto-creation failed for sale {sale.id}: {exc}",
+                exc_info=True,
+            )
 
     log_audit_event(
         db=db,

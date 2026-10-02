@@ -10,6 +10,7 @@ export interface StaffUser {
   is_active: boolean
   created_at: string
   is_totp_enabled?: boolean
+  must_change_password?: boolean
 }
 
 export interface CustomerUser {

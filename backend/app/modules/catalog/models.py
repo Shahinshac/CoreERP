@@ -77,5 +77,20 @@ class Product(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
         nullable=False,
     )
 
+    # ── Warranty Policy ─────────────────────────────────────────
+    # has_warranty = False  → no automatic warranty on sale
+    # has_warranty = True   → create customer Warranty record on sale
+    # warranty_months stores the policy duration (e.g. 12 = 1 year, 24 = 2 years)
+    has_warranty: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
+    warranty_months: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
     category: Mapped["Category"] = relationship("Category", back_populates="products")
     brand: Mapped["Brand"] = relationship("Brand", back_populates="products")

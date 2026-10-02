@@ -40,6 +40,7 @@ from app.modules.support.models import (
 )
 from app.modules.automation.models import AutomationJobRun
 from app.modules.audit.models import AuditLog
+from app.modules.admin.models import SystemConfig
 
 __all__ = [
     "AuditLog",
@@ -88,5 +89,6 @@ __all__ = [
     "TicketPriority",
     "Notification",
     "AutomationJobRun",
+    "SystemConfig",
 ]
 

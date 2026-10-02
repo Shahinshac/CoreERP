@@ -42,9 +42,12 @@ class StaffUserResponse(BaseModel):
 
     id: uuid.UUID
     email: str
+    full_name: str | None = None
     role: StaffRole
     is_active: bool
     is_totp_enabled: bool = False
+    must_change_password: bool = False
+    welcome_email_sent: bool = False
     created_at: datetime
 
 
@@ -66,6 +69,7 @@ class StaffTokenResponse(BaseModel):
     user: StaffUserResponse | None = None
     requires_2fa: bool = False
     temp_token: str | None = None
+    must_change_password: bool = False
 
 
 class CustomerTokenResponse(BaseModel):
@@ -121,3 +125,56 @@ class StaffSessionResponse(BaseModel):
 class StaffSessionListResponse(BaseModel):
     sessions: list[StaffSessionResponse]
 
+
+# ── Staff Admin / Onboarding ─────────────────────────────────────────────────
+
+class StaffCreateRequest(BaseModel):
+    """Admin-only: create a new staff account with a temporary password."""
+    email: EmailType
+    full_name: str = Field(..., min_length=2, max_length=255)
+    role: StaffRole = StaffRole.STAFF
+    phone: str | None = Field(None, max_length=50)
+    # If not provided, backend generates a cryptographically-secure temporary password
+    temporary_password: str | None = Field(None, min_length=8, max_length=128)
+
+
+class StaffOnboardingResult(BaseModel):
+    """Result of staff creation — includes email dispatch status."""
+    staff_id: uuid.UUID
+    email: str
+    full_name: str | None
+    role: str
+    account_created: bool = True
+    email_sent: bool
+    message: str
+
+
+class StaffChangePasswordRequest(BaseModel):
+    """Used by staff to change their password (including forced first-login change)."""
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class StaffAdminDetailResponse(BaseModel):
+    """Extended staff detail for admin panel — includes onboarding status."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    full_name: str | None = None
+    role: StaffRole
+    phone: str | None = None
+    employee_code: str | None = None
+    joining_date: datetime | None = None
+    is_active: bool
+    must_change_password: bool = False
+    welcome_email_sent: bool = False
+    is_totp_enabled: bool = False
+    created_at: datetime
+    deactivated_at: datetime | None = None
+
+    @property
+    def password_status(self) -> str:
+        if self.must_change_password:
+            return "TEMPORARY_PASSWORD"
+        return "PASSWORD_SET"

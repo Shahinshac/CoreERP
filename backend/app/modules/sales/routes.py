@@ -409,19 +409,20 @@ def pos_checkout(
                     notes=f"POS Sale {sale.invoice_number} Down Payment",
                 )
                 db.add(payment_record)
-        else:
+        elif final_payment_method not in ["credit", "unpaid", "pending"]:
             for p in payment_details_data:
-                payment_record = Payment(
-                    customer_id=customer.id if customer else None,
-                    created_by=current_staff.id,
-                    method=p["method"],
-                    amount=Decimal(p["amount"]),
-                    status=PaymentStatus.PAID.value,
-                    idempotency_key=f"pos-{sale.id}-{p['method']}",
-                    reference_id=sale.invoice_number,
-                    notes=f"POS Sale {sale.invoice_number} ({p['method'].upper()})",
-                )
-                db.add(payment_record)
+                if p["method"] not in ["credit", "unpaid", "pending"]:
+                    payment_record = Payment(
+                        customer_id=customer.id if customer else None,
+                        created_by=current_staff.id,
+                        method=p["method"],
+                        amount=Decimal(p["amount"]),
+                        status=PaymentStatus.PAID.value,
+                        idempotency_key=f"pos-{sale.id}-{p['method']}",
+                        reference_id=sale.invoice_number,
+                        notes=f"POS Sale {sale.invoice_number} ({p['method'].upper()})",
+                    )
+                    db.add(payment_record)
 
         sale_items_created = []
         for line in line_items_data:
@@ -617,6 +618,28 @@ def pos_return(
 
             # Update returned quantity on sale item
             sale_item.returned_quantity = sale_item.returned_quantity + ret_input.quantity
+
+            # ── Warranty handling on return ─────────────────────────────────
+            # If the full sold quantity is now returned, void the warranty record.
+            # Partial returns leave the warranty active (unreturned items still covered).
+            if sale_item.returned_quantity >= sale_item.quantity:
+                try:
+                    from app.modules.support.models import Warranty
+                    from datetime import datetime as dt
+                    warranty_to_void = (
+                        db.query(Warranty)
+                        .filter(
+                            Warranty.sale_item_id == sale_item.id,
+                            Warranty.is_claimed == False,
+                        )
+                        .first()
+                    )
+                    if warranty_to_void:
+                        warranty_to_void.is_claimed = True
+                        warranty_to_void.claimed_at = dt.utcnow()
+                        warranty_to_void.claim_notes = f"VOIDED: full product return — {return_num}"
+                except Exception as _w_exc:
+                    logger.warning(f"[WARRANTY] Could not void warranty for sale_item {sale_item.id}: {_w_exc}")
 
             # Fetch product to restore stock
             product = (

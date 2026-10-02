@@ -25,6 +25,7 @@ import {
   Plus,
   Printer,
   QrCode,
+  ScanBarcode,
   Tag,
   X,
 } from "lucide-react"
@@ -34,11 +35,14 @@ import { catalogApi, Product } from "./api"
 import { BarcodeModal } from "./BarcodeModal"
 import { QrModal } from "./QrModal"
 import { ProductLabelModal } from "./ProductLabelModal"
+import { BarcodeScannerModal } from "@/components/common/BarcodeScannerModal"
+import { ProductAlreadyExistsModal } from "./ProductAlreadyExistsModal"
 
 interface ProductDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product?: Product | null
+  initialBarcode?: string | null
   onSuccess: () => void
 }
 
@@ -46,6 +50,7 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   open,
   onOpenChange,
   product,
+  initialBarcode,
   onSuccess,
 }) => {
   const queryClient = useQueryClient()
@@ -61,12 +66,17 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
   const [gstRate, setGstRate] = useState("18.00")
   const [minStock, setMinStock] = useState("5.000")
   const [isPinned, setIsPinned] = useState(false)
+  const [hasWarranty, setHasWarranty] = useState(false)
+  const [warrantyMonths, setWarrantyMonths] = useState(12)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Codes & Identification sub-modals
   const [barcodeModalOpen, setBarcodeModalOpen] = useState(false)
   const [qrModalOpen, setQrModalOpen] = useState(false)
   const [labelModalOpen, setLabelModalOpen] = useState(false)
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [conflictProduct, setConflictProduct] = useState<Product | null>(null)
+  const [scannedForConflict, setScannedForConflict] = useState("")
   const [hsnSearchQuery, setHsnSearchQuery] = useState("")
   const [showHsnDropdown, setShowHsnDropdown] = useState(false)
   const [previewQrDataUrl, setPreviewQrDataUrl] = useState("")
@@ -119,10 +129,12 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
         setGstRate(product.gst_rate)
         setMinStock(product.min_stock)
         setIsPinned(!!product.is_pinned)
+        setHasWarranty(!!product.has_warranty)
+        setWarrantyMonths(product.warranty_months || 12)
       } else {
         setName("")
         setSku("")
-        setBarcode("")
+        setBarcode(initialBarcode || "")
         setHsnCode("")
         setCategoryId(categories[0]?.id || "")
         setBrandId(brands[0]?.id || "")
@@ -132,6 +144,8 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
         setGstRate("18.00")
         setMinStock("5.000")
         setIsPinned(false)
+        setHasWarranty(false)
+        setWarrantyMonths(12)
       }
     } else {
       // Auto-select first item if previously none was available and now loaded
@@ -243,6 +257,8 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           gst_rate: gstRate,
           min_stock: minStock,
           is_pinned: isPinned,
+          has_warranty: hasWarranty,
+          warranty_months: hasWarranty ? warrantyMonths : null,
         })
         toast.success("Product updated successfully")
       } else {
@@ -259,6 +275,8 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
           gst_rate: gstRate,
           min_stock: minStock,
           is_pinned: isPinned,
+          has_warranty: hasWarranty,
+          warranty_months: hasWarranty ? warrantyMonths : undefined,
         })
         toast.success("Product created successfully")
       }
@@ -491,12 +509,24 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
                   )}
                 </div>
 
-                <Input
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder="Auto-generated retail EAN-13 if blank (e.g. 2000000000015)"
-                  className="font-mono text-xs"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    placeholder="Auto-generated retail EAN-13 if blank (e.g. 2000000000015)"
+                    className="font-mono text-xs flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setScannerOpen(true)}
+                    className="h-9 px-3 border-white/[0.14] text-xs font-medium text-zinc-200 hover:text-white gap-1.5 shrink-0 bg-white/[0.03]"
+                    title="Scan barcode with phone/desktop camera"
+                  >
+                    <ScanBarcode className="h-3.5 w-3.5 text-primary" />
+                    <span>Scan</span>
+                  </Button>
+                </div>
                 <p className="text-[10px] text-muted-foreground">
                   Retail numeric barcode (EAN-13 format). Auto-generated if left blank.
                 </p>
@@ -954,6 +984,70 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
               Pin to POS Quick-Picks (shows at the top of POS terminal)
             </label>
           </div>
+
+          {/* ── Warranty Policy Section ────────────────────────────── */}
+          <div className="col-span-1 sm:col-span-2">
+            <div className="rounded-lg border border-border bg-card/50 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🛡️</span>
+                  <span className="text-sm font-semibold text-foreground">Product Warranty</span>
+                </div>
+                {/* ON/OFF Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setHasWarranty(!hasWarranty)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                    hasWarranty ? "bg-primary" : "bg-muted"
+                  }`}
+                  aria-pressed={hasWarranty}
+                  id="warrantyToggle"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      hasWarranty ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {!hasWarranty && (
+                <p className="text-xs text-muted-foreground">
+                  OFF — No automatic warranty will be created when this product is sold.
+                </p>
+              )}
+
+              {hasWarranty && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs text-emerald-400">
+                    ✓ ON — A customer warranty record will be created automatically on each sale.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <label htmlFor="warrantyMonthsSelect" className="text-sm text-muted-foreground whitespace-nowrap">
+                      Warranty Duration:
+                    </label>
+                    <select
+                      id="warrantyMonthsSelect"
+                      value={warrantyMonths}
+                      onChange={(e) => setWarrantyMonths(parseInt(e.target.value))}
+                      className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value={3}>3 Months</option>
+                      <option value={6}>6 Months</option>
+                      <option value={12}>1 Year (12 Months)</option>
+                      <option value={18}>18 Months</option>
+                      <option value={24}>2 Years (24 Months)</option>
+                      <option value={36}>3 Years (36 Months)</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Warranty starts from the purchase date and expires after{" "}
+                    <strong className="text-foreground">{warrantyMonths} month{warrantyMonths !== 1 ? "s" : ""}</strong>.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <DialogFooter>
@@ -988,6 +1082,56 @@ export const ProductDialog: React.FC<ProductDialogProps> = ({
       open={labelModalOpen}
       onOpenChange={setLabelModalOpen}
       product={product || null}
+    />
+
+    <BarcodeScannerModal
+      open={scannerOpen}
+      onOpenChange={setScannerOpen}
+      title="Scan Product Barcode"
+      description="Point camera at product label barcode"
+      onScan={async (scanned) => {
+        try {
+          const existing = await catalogApi.lookupBarcode(scanned)
+          if (existing && existing.id !== product?.id) {
+            setScannedForConflict(scanned)
+            setConflictProduct(existing)
+            return
+          }
+        } catch {
+          // 404 means unique barcode, ready for form
+        }
+        setBarcode(scanned)
+        toast.success(`Barcode applied: ${scanned}`)
+      }}
+    />
+
+    <ProductAlreadyExistsModal
+      open={Boolean(conflictProduct)}
+      onOpenChange={(open) => !open && setConflictProduct(null)}
+      product={conflictProduct}
+      scannedBarcode={scannedForConflict}
+      onEdit={(existingProd) => {
+        setConflictProduct(null)
+        // Populate existing product into the form
+        setName(existingProd.name)
+        setSku(existingProd.sku)
+        setBarcode(existingProd.barcode || "")
+        setHsnCode(existingProd.hsn_code || "")
+        setCategoryId(existingProd.category_id)
+        setBrandId(existingProd.brand_id)
+        setUnit(existingProd.unit)
+        setPurchasePrice(existingProd.purchase_price)
+        setSellingPrice(existingProd.selling_price)
+        setGstRate(existingProd.gst_rate)
+        setMinStock(existingProd.min_stock)
+        setIsPinned(!!existingProd.is_pinned)
+        toast.info(`Loaded existing product: ${existingProd.name}`)
+      }}
+      onAddToPos={(existingProd) => {
+        setConflictProduct(null)
+        onOpenChange(false)
+        window.location.href = `/staff/sales?add_barcode=${encodeURIComponent(existingProd.barcode || existingProd.sku)}`
+      }}
     />
     </>
   )

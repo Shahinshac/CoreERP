@@ -121,6 +121,7 @@ def create_app() -> FastAPI:
     from app.modules.automation.routes import automation_router
     from app.modules.audit.routes import audit_router
     from app.modules.search.routes import search_router
+    from app.modules.admin.routes import admin_router
     from app.modules.reports.dashboard_routes import dashboard_router
 
     app.include_router(staff_auth_router)
@@ -144,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(automation_router)
     app.include_router(audit_router)
     app.include_router(search_router)
+    app.include_router(admin_router)
 
     return app
 

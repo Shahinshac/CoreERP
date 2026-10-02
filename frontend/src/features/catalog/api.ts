@@ -32,6 +32,8 @@ export interface Product {
   image_path?: string | null
   is_active: boolean
   is_pinned?: boolean
+  has_warranty?: boolean
+  warranty_months?: number | null
   created_at: string
   updated_at: string
   category?: Category | null
@@ -51,6 +53,8 @@ export interface ProductCreatePayload {
   gst_rate?: string
   min_stock?: string
   is_pinned?: boolean
+  has_warranty?: boolean
+  warranty_months?: number | null
 }
 
 export interface ProductUpdatePayload {
@@ -67,6 +71,8 @@ export interface ProductUpdatePayload {
   min_stock?: string
   is_active?: boolean
   is_pinned?: boolean
+  has_warranty?: boolean
+  warranty_months?: number | null
 }
 
 export const catalogApi = {
@@ -106,6 +112,8 @@ export const catalogApi = {
     return apiClient.get<Product[]>(`/api/catalog/products${qs ? `?${qs}` : ""}`)
   },
   getProduct: (id: string) => apiClient.get<Product>(`/api/catalog/products/${id}`),
+  lookupBarcode: (barcode: string) =>
+    apiClient.get<Product>(`/api/catalog/products/barcode/${encodeURIComponent(barcode.trim())}`),
   createProduct: (data: ProductCreatePayload) =>
     apiClient.post<Product>("/api/catalog/products", data),
   updateProduct: (id: string, data: ProductUpdatePayload) =>

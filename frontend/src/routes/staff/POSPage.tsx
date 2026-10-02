@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
   AlertCircle,
+  Camera,
   CheckCircle2,
   CreditCard,
   HelpCircle,
@@ -41,12 +42,38 @@ import { CartItem, posApi, POSProduct, Sale, SplitPaymentPortion } from "@/featu
 import { catalogApi } from "@/features/catalog/api"
 import { customersApi } from "@/features/customers/api"
 import { CustomerDialog } from "@/features/customers/CustomerDialog"
+import { useSearchParams } from "react-router-dom"
 import { Invoice, invoicingApi } from "@/features/invoicing/api"
 import { ReceiptModal } from "@/features/pos/ReceiptModal"
 import { CashDrawerModal } from "@/features/pos/CashDrawerModal"
 import { cashDrawerApi } from "@/features/pos/cashDrawerApi"
+import { BarcodeScannerModal } from "@/components/common/BarcodeScannerModal"
+
+// Units that only support whole-number quantities
+const INTEGER_UNITS = new Set([
+  "pcs", "piece", "pieces", "pc", "nos", "no", "unit", "units",
+  "box", "boxes", "bag", "bags", "pack", "packs", "packet", "packets",
+  "roll", "rolls", "bundle", "bundles", "pair", "pairs", "set", "sets",
+  "dozen", "dozens", "tray", "trays", "sheet", "sheets",
+])
+
+/**
+ * Returns the number of decimal places allowed for a given unit.
+ * 0  → integer-only (PCS, Nos, Box, Pack, etc.)
+ * 3  → decimal (KG, G, L, ML, M, CM, etc.)
+ */
+function getUnitDecimals(unit: string): number {
+  return INTEGER_UNITS.has(unit.trim().toLowerCase()) ? 0 : 3
+}
+
+/** Format a numeric quantity string according to unit precision. */
+function formatQty(num: number, unit: string): string {
+  const dec = getUnitDecimals(unit)
+  return num.toFixed(dec)
+}
 
 export function POSPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [productSearch, setProductSearch] = useState("")
   const [cart, setCart] = useState<CartItem[]>([])
@@ -79,6 +106,7 @@ export function POSPage() {
   // Barcode Scanner State & Refs
   const [barcodeInput, setBarcodeInput] = useState("")
   const [isScanning, setIsScanning] = useState(false)
+  const [cameraScannerOpen, setCameraScannerOpen] = useState(false)
   const [lastScanFeedback, setLastScanFeedback] = useState<{
     type: "success" | "error"
     message: string
@@ -123,15 +151,17 @@ export function POSPage() {
 
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id)
+      const dec = getUnitDecimals(product.unit)
       if (existing) {
         const currentQty = parseFloat(existing.quantity)
-        if (currentQty + 1 > stockAvailable) {
+        const step = dec === 0 ? 1 : 1
+        if (currentQty + step > stockAvailable) {
           toast.error(`Cannot exceed available stock of ${stockAvailable} ${product.unit}.`)
           return prev
         }
         return prev.map((item) =>
           item.product.id === product.id
-            ? { ...item, quantity: (currentQty + 1).toFixed(3) }
+            ? { ...item, quantity: formatQty(currentQty + step, product.unit) }
             : item
         )
       }
@@ -139,7 +169,7 @@ export function POSPage() {
         ...prev,
         {
           product,
-          quantity: "1.000",
+          quantity: formatQty(1, product.unit),
           discount_amount: "0.00",
         },
       ]
@@ -150,9 +180,18 @@ export function POSPage() {
     const item = cart.find((i) => i.product.id === productId)
     if (!item) return
 
-    const newQty = parseFloat(newQtyStr) || 0
-    const maxStock = parseFloat(item.product.current_stock)
+    // Allow mid-edit empty or partial values (e.g. user clearing the field to retype)
+    if (newQtyStr === "" || newQtyStr === ".") {
+      setCart((prev) =>
+        prev.map((i) => (i.product.id === productId ? { ...i, quantity: newQtyStr } : i))
+      )
+      return
+    }
 
+    const newQty = parseFloat(newQtyStr)
+    if (isNaN(newQty)) return
+
+    const maxStock = parseFloat(item.product.current_stock)
     if (newQty > maxStock) {
       toast.error(`Cannot exceed stock limit of ${maxStock} ${item.product.unit}.`)
       return
@@ -161,6 +200,28 @@ export function POSPage() {
     setCart((prev) =>
       prev.map((i) => (i.product.id === productId ? { ...i, quantity: newQtyStr } : i))
     )
+  }
+
+  const handleQtyBlur = (productId: string) => {
+    const item = cart.find((i) => i.product.id === productId)
+    if (!item) return
+    const parsed = parseFloat(item.quantity)
+    const dec = getUnitDecimals(item.product.unit)
+    if (isNaN(parsed) || parsed <= 0) {
+      // Reset to minimum valid quantity
+      setCart((prev) =>
+        prev.map((i) =>
+          i.product.id === productId ? { ...i, quantity: formatQty(1, i.product.unit) } : i
+        )
+      )
+    } else {
+      // Normalize decimal places on blur
+      setCart((prev) =>
+        prev.map((i) =>
+          i.product.id === productId ? { ...i, quantity: parsed.toFixed(dec) } : i
+        )
+      )
+    }
   }
 
   const handleRemoveFromCart = (productId: string) => {
@@ -220,6 +281,22 @@ export function POSPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [cart]
   )
+
+  // Auto-scan barcode passed from external links (e.g. ProductsPage / InventoryPage "Add to POS")
+  useEffect(() => {
+    const addBarcode = searchParams.get("add_barcode")
+    if (addBarcode) {
+      handleBarcodeScan(addBarcode)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete("add_barcode")
+          return next
+        },
+        { replace: true }
+      )
+    }
+  }, [searchParams, setSearchParams, handleBarcodeScan])
 
   // Global scanner wedge listener + [F2] keyboard shortcut to focus scanner input
   useEffect(() => {
@@ -376,13 +453,24 @@ export function POSPage() {
     // Validate quantities
     for (const item of cart) {
       const qty = parseFloat(item.quantity)
-      if (!qty || qty <= 0) {
-        toast.error(`Invalid quantity for ${item.product.name}`)
+      const dec = getUnitDecimals(item.product.unit)
+      const minQty = dec === 0 ? 1 : 0.001
+
+      if (isNaN(qty) || qty < minQty) {
+        toast.error(
+          `Invalid quantity for ${item.product.name}. Minimum: ${dec === 0 ? "1" : "0.001"} ${item.product.unit}`
+        )
+        return
+      }
+      if (dec === 0 && !Number.isInteger(qty)) {
+        toast.error(
+          `Quantity for ${item.product.name} must be a whole number (unit: ${item.product.unit}).`
+        )
         return
       }
       if (qty > parseFloat(item.product.current_stock)) {
         toast.error(
-          `Insufficient stock for ${item.product.name}. Available: ${item.product.current_stock}`
+          `Insufficient stock for ${item.product.name}. Available: ${item.product.current_stock} ${item.product.unit}`
         )
         return
       }
@@ -587,9 +675,22 @@ export function POSPage() {
                   </Badge>
                 </h3>
               </div>
-              <Badge variant="outline" className="text-[10px] font-mono text-zinc-400 border-white/[0.12]">
-                Press [F2] to focus
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setCameraScannerOpen(true)}
+                  className="h-7 px-2.5 text-xs font-semibold bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 gap-1.5 shadow-sm"
+                  title="Open phone or desktop camera to scan barcodes"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>Scan with Camera</span>
+                </Button>
+                <Badge variant="outline" className="text-[10px] font-mono text-zinc-400 border-white/[0.12] hidden sm:inline-flex">
+                  Press [F2] to focus
+                </Badge>
+              </div>
             </div>
 
             <form
@@ -919,36 +1020,42 @@ export function POSPage() {
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() =>
-                              handleUpdateQty(
-                                item.product.id,
-                                Math.max(1, currentQtyNum - 1).toFixed(3)
-                              )
-                            }
-                            className="h-7 w-7 rounded bg-surface-hover hover:bg-white/[0.12] border border-white/[0.12] flex items-center justify-center text-zinc-200"
+                            onClick={() => {
+                              const dec = getUnitDecimals(item.product.unit)
+                              const step = dec === 0 ? 1 : 1
+                              const newVal = Math.max(dec === 0 ? 1 : 0.001, currentQtyNum - step)
+                              handleUpdateQty(item.product.id, newVal.toFixed(dec))
+                            }}
+                            disabled={currentQtyNum <= (getUnitDecimals(item.product.unit) === 0 ? 1 : 0.001)}
+                            className="h-7 w-7 rounded bg-surface-hover hover:bg-white/[0.12] disabled:opacity-40 border border-white/[0.12] flex items-center justify-center text-zinc-200"
                           >
                             <Minus className="h-3 w-3" />
                           </button>
                           <NumericInput
                             value={item.quantity}
                             onChange={(val) => handleUpdateQty(item.product.id, val)}
+                            onBlur={() => handleQtyBlur(item.product.id)}
                             precisionType="quantity"
+                            maxDecimals={getUnitDecimals(item.product.unit)}
                             className="h-7 w-20 text-center text-xs"
+                            placeholder={getUnitDecimals(item.product.unit) === 0 ? "1" : "1.000"}
+                            title={`Quantity (${item.product.unit})`}
                           />
                           <button
                             type="button"
-                            onClick={() =>
-                              handleUpdateQty(
-                                item.product.id,
-                                Math.min(maxStock, currentQtyNum + 1).toFixed(3)
-                              )
-                            }
+                            onClick={() => {
+                              const dec = getUnitDecimals(item.product.unit)
+                              const step = dec === 0 ? 1 : 1
+                              const newVal = Math.min(maxStock, currentQtyNum + step)
+                              handleUpdateQty(item.product.id, newVal.toFixed(dec))
+                            }}
                             disabled={currentQtyNum >= maxStock}
                             className="h-7 w-7 rounded bg-surface-hover hover:bg-white/[0.12] disabled:opacity-40 border border-white/[0.12] flex items-center justify-center text-zinc-200"
                           >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
+
 
                         {/* Line Total */}
                         <div className="text-right font-mono font-bold text-zinc-100 text-sm">
@@ -1385,6 +1492,18 @@ export function POSPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Camera Barcode Scanner Modal with continuous multi-scan support */}
+      <BarcodeScannerModal
+        open={cameraScannerOpen}
+        onOpenChange={setCameraScannerOpen}
+        title="POS Barcode Scanner"
+        description="Scan product barcodes to add directly to cart"
+        continuousMode={true}
+        onScan={async (scanned) => {
+          await handleBarcodeScan(scanned)
+        }}
+      />
 
       {/* Mobile Sticky Cart & Quick Checkout Bar */}
       {cart.length > 0 && (

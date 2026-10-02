@@ -13,6 +13,7 @@ import {
   Pin,
   Plus,
   RefreshCw,
+  ScanBarcode,
   Search,
   Tag,
 } from "lucide-react"
@@ -39,6 +40,8 @@ import {
   StockOperationType,
 } from "@/features/inventory/StockOperationDialog"
 import { useAuth } from "@/features/auth/AuthContext"
+import { BarcodeScannerModal } from "@/components/common/BarcodeScannerModal"
+import { ProductAlreadyExistsModal } from "@/features/catalog/ProductAlreadyExistsModal"
 
 export function ProductsPage() {
   const [searchParams] = useSearchParams()
@@ -57,6 +60,10 @@ export function ProductsPage() {
   // Dialog states
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [scannedBarcodeForNew, setScannedBarcodeForNew] = useState<string | null>(null)
+  const [pageScannerOpen, setPageScannerOpen] = useState(false)
+  const [pageConflictProduct, setPageConflictProduct] = useState<Product | null>(null)
+  const [scannedForConflict, setScannedForConflict] = useState("")
   const [productCodesModalOpen, setProductCodesModalOpen] = useState(false)
   const [productForCodes, setProductForCodes] = useState<Product | null>(null)
   const [isBackfilling, setIsBackfilling] = useState(false)
@@ -183,8 +190,18 @@ export function ProductsPage() {
               Import CSV
             </Button>
             <Button
+              variant="outline"
+              onClick={() => setPageScannerOpen(true)}
+              className="flex items-center gap-2 border-primary/40 text-primary hover:bg-primary/10"
+              title="Scan barcode with phone or desktop camera"
+            >
+              <ScanBarcode className="h-4 w-4" />
+              Scan Barcode
+            </Button>
+            <Button
               onClick={() => {
                 setSelectedProduct(null)
+                setScannedBarcodeForNew(null)
                 setProductDialogOpen(true)
               }}
               className="flex items-center gap-2 shadow-sm"
@@ -534,9 +551,53 @@ export function ProductsPage() {
       {/* Dialogs */}
       <ProductDialog
         open={productDialogOpen}
-        onOpenChange={setProductDialogOpen}
+        onOpenChange={(isOpen) => {
+          setProductDialogOpen(isOpen)
+          if (!isOpen) setScannedBarcodeForNew(null)
+        }}
         product={selectedProduct}
+        initialBarcode={scannedBarcodeForNew}
         onSuccess={() => refetch()}
+      />
+
+      <BarcodeScannerModal
+        open={pageScannerOpen}
+        onOpenChange={setPageScannerOpen}
+        title="Scan Barcode for Product Creation"
+        description="Point camera at product label barcode"
+        onScan={async (scanned) => {
+          try {
+            const existing = await catalogApi.lookupBarcode(scanned)
+            if (existing) {
+              setScannedForConflict(scanned)
+              setPageConflictProduct(existing)
+              return
+            }
+          } catch {
+            // 404: Not found -> open creation dialog with barcode prefilled
+          }
+          toast.info(`New barcode ${scanned} detected. Opening product registration form.`)
+          setSelectedProduct(null)
+          setScannedBarcodeForNew(scanned)
+          setProductDialogOpen(true)
+        }}
+      />
+
+      <ProductAlreadyExistsModal
+        open={Boolean(pageConflictProduct)}
+        onOpenChange={(isOpen) => !isOpen && setPageConflictProduct(null)}
+        product={pageConflictProduct}
+        scannedBarcode={scannedForConflict}
+        onEdit={(existingProd) => {
+          setPageConflictProduct(null)
+          setSelectedProduct(existingProd)
+          setScannedBarcodeForNew(null)
+          setProductDialogOpen(true)
+        }}
+        onAddToPos={(existingProd) => {
+          setPageConflictProduct(null)
+          window.location.href = `/staff/sales?add_barcode=${encodeURIComponent(existingProd.barcode || existingProd.sku)}`
+        }}
       />
 
       <ProductCodesModal

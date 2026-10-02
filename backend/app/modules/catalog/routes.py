@@ -247,6 +247,45 @@ def list_products(
     return query.order_by(Product.is_pinned.desc(), Product.name.asc()).all()
 
 
+@catalog_router.get("/products/barcode/{barcode:path}", response_model=ProductResponse)
+def get_product_by_barcode(
+    barcode: str,
+    db: Session = Depends(get_db),
+    _: StaffUser = Depends(get_current_staff),
+):
+    """
+    Lookup a product by exact normalized barcode (or fallback to SKU).
+    Preserves leading zeros and treats barcode strictly as a string.
+    """
+    code = barcode.strip()
+    if not code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Barcode cannot be empty.")
+
+    # QR code JSON payload unwrapping
+    if code.startswith("{") and code.endswith("}"):
+        try:
+            import json
+            parsed = json.loads(code)
+            if isinstance(parsed, dict):
+                code = str(parsed.get("barcode") or parsed.get("sku") or parsed.get("id") or code).strip()
+        except Exception:
+            pass
+
+    # Exact barcode match first
+    product = db.query(Product).filter(Product.barcode == code).first()
+    if not product:
+        # Fallback to exact SKU match
+        product = db.query(Product).filter(Product.sku.ilike(code)).first()
+
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Product not found for barcode: {code}",
+        )
+
+    return product
+
+
 @catalog_router.get("/products/{product_id}", response_model=ProductResponse)
 def get_product(
     product_id: uuid.UUID,
@@ -308,6 +347,8 @@ def create_product(
         gst_rate=payload.gst_rate,
         min_stock=payload.min_stock,
         is_pinned=payload.is_pinned,
+        has_warranty=payload.has_warranty,
+        warranty_months=payload.warranty_months if payload.has_warranty else None,
         current_stock=0,
     )
     db.add(product)
@@ -348,14 +389,17 @@ def update_product(
             )
         product.sku = payload.sku
 
-    if payload.barcode is not None and payload.barcode != product.barcode:
-        conflict = db.query(Product).filter(Product.barcode == payload.barcode, Product.id != product_id).first()
-        if conflict:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Product with barcode '{payload.barcode}' already exists.",
-            )
-        product.barcode = payload.barcode
+    if payload.barcode is not None:
+        bc_clean = payload.barcode.strip() if payload.barcode else None
+        if bc_clean != product.barcode:
+            if bc_clean:
+                conflict = db.query(Product).filter(Product.barcode == bc_clean, Product.id != product_id).first()
+                if conflict:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Product with barcode '{bc_clean}' already exists.",
+                    )
+            product.barcode = bc_clean
 
     if payload.category_id is not None:
         if not db.query(Category).filter(Category.id == payload.category_id).first():
@@ -367,10 +411,14 @@ def update_product(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid brand_id.")
         product.brand_id = payload.brand_id
 
-    for field in ["name", "hsn_code", "unit", "purchase_price", "selling_price", "gst_rate", "min_stock", "is_active", "is_pinned"]:
+    for field in ["name", "hsn_code", "unit", "purchase_price", "selling_price", "gst_rate", "min_stock", "is_active", "is_pinned", "has_warranty", "warranty_months"]:
         val = getattr(payload, field)
         if val is not None:
             setattr(product, field, val)
+
+    # If warranty is being disabled, clear the months
+    if payload.has_warranty is False:
+        product.warranty_months = None
 
     log_audit_event(
         db=db,
